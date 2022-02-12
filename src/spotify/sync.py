@@ -388,7 +388,6 @@ if __name__ == '__main__':
     parser.add_argument("--name", type=str, nargs=None)
     args = parser.parse_args()
     chosen_playlist_name = args.name
-    # playlist_name = "Thou Shall Think"
     playlists = json.load(open(PREPARED_PLAYLIST_FILE, "r"))
     sp_instance = get_spotipy_instance()
     sync_playlist(sp_instance, chosen_playlist_name, playlists[chosen_playlist_name])
