@@ -74,7 +74,7 @@ To sync a specific playlist
 python src/apple_music/library.py
 ```
 
-2. Sync a specific library
+2. Sync a specific playlist
 
 ```bash
 python src/spotify/sync.py --name "Apple Music Playlist Name"
