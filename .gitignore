@@ -1,0 +1,7 @@
+**/credentials.json
+data/**
+**/.cache
+**/.spotify_caches
+**/.DS_Store
+**/__pychache/
+**/.ipynb_checkpoints
