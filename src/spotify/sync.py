@@ -190,7 +190,7 @@ def get_playlist_tracks(sp: spotipy.Spotify, playlist_id: str) -> list:
 
 def get_best_match(sp: spotipy.Spotify, song_name: str, artist_name: str, album_name: str) -> dict:
     """
-    Returns first matched Spotify track, if any match available.
+    Returns best Spotify song match for a given Apple Music song, if available.
 
     Parameters
     ----------
