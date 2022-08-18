@@ -1,17 +1,19 @@
 # About this repo
 
+## Summary
 Synchronize Apple Music library with Spotify.
 
-Features:
+## Features
+- Complete control over your data (data is only processed by Spotify's API, no third party)
 - Supports incremental syncing by keeping track of what has been synced before
 - Provides detailed reports on the syncing effectiveness by logging song matches and their associated similarity scores.
-  See example below.
+  See example below:
 
-| Apple Song Name   | Apple Artist     | Apple Album            | Spotify Song Name   | Spotify Artist   | Spotify Album   | Spotify Track ID       |   Match Score |   Song Match Score |   Artist Match Score | Album Match Score |
-|:------------------|:-----------------|:-----------------------|:--------------------|:-----------------|:----------------|:-----------------------|--------------:|-------------------:|---------------------:|------------------:|
-| Caruso            | Fiorella Mannoia | A te (Special Edition) | Caruso              | Fiorella Mannoia | A te            | 2kWftUZ8PxLQtRvrHX3cIe |        0.9375 |           0.833333 |                0.875 |               0.2 |
+| Apple Song Name   | Apple Artist     | Apple Album            | Spotify Song Name   | Spotify Artist   | Spotify Album   | Spotify Track ID       |   Match Score |   Song Match Score | Artist Match Score | Album Match Score |
+|:------------------|:-----------------|:-----------------------|:--------------------|:-----------------|:----------------|:-----------------------|--------------:|-------------------:|-------------------:|------------------:|
+| Caruso            | Fiorella Mannoia | A te (Special Edition) | Caruso              | Fiorella Mannoia | A te            | 2kWftUZ8PxLQtRvrHX3cIe |          0.93 |               0.83 |               0.88 |               0.2 |
 
-- Handles various edge cases, such as artist collaborations (e.g. `&` in artist name or `feat.` in song name)
+- Successfully matches various edge cases, such as artist collaborations (e.g. `&` in artist name or `feat.` in song name)
 
 # Installation guide
 
@@ -62,12 +64,19 @@ replace your client ID with value from step 1.6 and your client secret from step
 
 # User instructions
 
-To run the entire pipeline (parse Apply Music Library + sync it in its entirety)
+First and foremost
+- open Music app (macOS or Windows, tested with app version `1.2.5.7`)
+- Go to `File -> Library -> Export Library...`
+- Save file as `Library.xml` in `data/apple_music/` 
+
+Only then, can your playlists be synced.
+
+### To run the entire pipeline (parse Apply Music Library + sync it in its entirety)
 ```bash
 python src/main.py
 ```
 
-To sync a specific playlist
+### To sync a specific playlist
 1. If Apple Music library has not yet been parsed:
 
 ```bash
