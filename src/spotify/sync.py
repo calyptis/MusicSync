@@ -26,7 +26,7 @@ logging.basicConfig(
 #       in this database. This will save some API calls.
 
 
-def query_similarity(query: tuple, match: tuple) -> tuple:
+def measure_query_similarity(query: tuple, match: tuple) -> tuple:
     """
     Calculates string similarity matches between the original query and a match returned by the API.
     Final similarity is based on individual similarities of song, artist and album (if available).
@@ -82,7 +82,7 @@ def evaluate_matches(tracks: list, song_name: str, artist_name: str, album_name:
         List of tuples containing similarity metrics as returned by query_similarity
     """
     matched_items = [
-        query_similarity(
+        measure_query_similarity(
             (song_name, artist_name, album_name),
             (item.get("name"), " ".join([i.get("name") for i in item.get("artists")]), item.get("album").get("name"))
         )

@@ -1,6 +1,5 @@
 import json
 import time
-import spotipy.exceptions
 
 from src.config import CREDENTIALS_PATH
 

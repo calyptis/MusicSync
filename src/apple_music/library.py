@@ -8,7 +8,7 @@ def parse_apple_music_library(filename: str = APPLE_MUSIC_LIBRARY_FILE) -> tuple
     """
     Parses Apple Music library, which is exported using File -> Library -> Export Library...
     It creates two objects, a dataframe containing all relevant information of all the songs in the library
-    and a dictionary containing track IDs for each playlist.
+    and a dictionary containing the track IDs for each playlist.
 
     Parameters
     ----------
@@ -33,7 +33,7 @@ def parse_apple_music_library(filename: str = APPLE_MUSIC_LIBRARY_FILE) -> tuple
     # Each song has first an ID entry <key> and then its info <dict>
     songs = song_list.findall('dict')
     # Load songs into a dataframe
-    songs_df = pd.DataFrame(list(map(_get_entry, songs)))
+    df_songs = pd.DataFrame(list(map(_get_entry, songs)))
     # Get correct dtypes
     tags = {}
     for s in songs:
@@ -43,38 +43,38 @@ def parse_apple_music_library(filename: str = APPLE_MUSIC_LIBRARY_FILE) -> tuple
             if e not in tags:
                 tags[e] = t
     # Transform columns to have correct type
-    for col in songs_df.columns:
+    for col in df_songs.columns:
         if tags[col] == 'integer':
-            songs_df[col] = pd.to_numeric(songs_df[col])
+            df_songs[col] = pd.to_numeric(df_songs[col])
         if tags[col] == 'date':
-            songs_df[col] = pd.to_datetime(songs_df[col], yearfirst=True)
+            df_songs[col] = pd.to_datetime(df_songs[col], yearfirst=True)
 
     # /// PLAYLISTS \\\
     playlists_data = library.findall("array")[-1].findall("dict")
-    playlists = {}
+    dict_playlist = {}
     for p in playlists_data:
         p_name = p.find("string").text
-        track_list_ = p.findall("array")
+        tmp_track_list = p.findall("array")
         track_list = None
-        if track_list_:
+        if tmp_track_list:
             try:
-                track_list_ = track_list_[-1].findall("dict")
-                if track_list_:
-                    track_list = [int(i.find("integer").text) for i in track_list_]
+                tmp_track_list = tmp_track_list[-1].findall("dict")
+                if tmp_track_list:
+                    track_list = [int(i.find("integer").text) for i in tmp_track_list]
             except KeyError:
                 pass
-        playlists[p_name] = track_list
+        dict_playlist[p_name] = track_list
 
-    return songs_df, playlists
+    return df_songs, dict_playlist
 
 
 def write_apple_music_library():
     """
-    Parses Apply Music Library file and stores to information to disk.
+    Parses Apply Music Library file and writes output to disk.
 
     Returns
     -------
-
+        Writes output to file.
     """
     songs, playlists = parse_apple_music_library(APPLE_MUSIC_LIBRARY_FILE)
     songs.to_csv(SONG_FILE, index=False)
