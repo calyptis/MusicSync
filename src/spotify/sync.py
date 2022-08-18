@@ -256,9 +256,12 @@ def get_best_match(sp: spotipy.Spotify, song_name: str, artist_name: str, album_
 
     attempts_best_matches = []
     for attempt in attempts:
-        query = " ".join(attempt)
+        query = " ".join([str(i) for i in attempt])
         query = re.sub(r"\s+", " ", query).strip()
-        tracks = timeout_wrapper(sp.search(query, limit=15).get("tracks"))
+        try:
+            tracks = timeout_wrapper(sp.search(query, limit=15)).get("tracks")
+        except spotipy.exceptions.SpotifyException:
+            tracks = None
         if tracks is not None and len(tracks.get("items")) > 0:
             items = tracks.get("items")
             attempts_best_matches += [return_best_match(items, best_match_template.copy(), *attempt)]
