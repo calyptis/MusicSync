@@ -12,6 +12,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import logging
 
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -84,9 +85,14 @@ def evaluate_matches(tracks: list, song_name: str, artist_name: str, album_name:
     matched_items = [
         measure_query_similarity(
             (song_name, artist_name, album_name),
-            (item.get("name"), " ".join([i.get("name") for i in item.get("artists")]), item.get("album").get("name"))
+            (
+                str(item.get("name", "")),
+                " ".join([str(i.get("name", "")) for i in item.get("artists")]),
+                str(item.get("album").get("name", ""))
+            )
         )
         for item in tracks
+        if item is not None
     ]
     return matched_items
 
@@ -190,7 +196,7 @@ def get_playlist_tracks(sp: spotipy.Spotify, playlist_id: str) -> list:
 
 def get_best_match(sp: spotipy.Spotify, song_name: str, artist_name: str, album_name: str) -> dict:
     """
-    Returns best Spotify song match for a given Apple Music song, if available.
+    Returns the best Spotify song match for a given Apple Music song, if available.
 
     Parameters
     ----------
@@ -260,7 +266,11 @@ def get_best_match(sp: spotipy.Spotify, song_name: str, artist_name: str, album_
         query = re.sub(r"\s+", " ", query).strip()
         try:
             tracks = timeout_wrapper(sp.search(query, limit=15)).get("tracks")
-        except spotipy.exceptions.SpotifyException:
+        # except spotipy.exceptions.SpotifyException or requests.exceptions.ReadTimeout:
+        # TODO: Properly catch: requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='api.spotify.com', port=443):
+        #  Read timed out. (read timeout=5)
+        # noinspection PyBroadException
+        except:
             tracks = None
         if tracks is not None and len(tracks.get("items")) > 0:
             items = tracks.get("items")
@@ -326,17 +336,25 @@ def sync_playlist(
         songs_to_sync = playlist_songs
 
     user_id = sp.current_user()["id"]
-
-    list_of_existing_playlists = {v["name"]: v["id"] for v in sp.user_playlists(user_id, limit=50)["items"]}
+    offset = 0
+    limit = 50
+    d_existing_playlists = {}
+    while True:
+        list_playlists = sp.user_playlists(user_id, limit=limit, offset=offset)["items"]
+        d_playlists = {v["name"]: v["id"] for v in list_playlists}
+        if len(d_playlists) == 0 or d_playlists is None:
+            break
+        d_existing_playlists = {**d_existing_playlists, **d_playlists}
+        offset += limit
     # If playlist does not already exist on Spotify, create it
-    if playlist_name not in list(list_of_existing_playlists.keys()):
+    if playlist_name not in d_existing_playlists:
         if verbose >= 1:
             logging.info(f"Spotify playlist was newly created")
         info = sp.user_playlist_create(user_id, playlist_name, public=False)
         tracks = []
         playlist_id = info["id"]
     else:
-        playlist_id = list_of_existing_playlists[playlist_name]
+        playlist_id = d_existing_playlists[playlist_name]
         tracks = get_playlist_tracks(sp, playlist_id)
         if verbose >= 1:
             logging.info(f"Spotify playlist already exists and contained {len(tracks)} songs")
@@ -393,4 +411,7 @@ if __name__ == '__main__':
     chosen_playlist_name = args.name
     playlists = json.load(open(PREPARED_PLAYLIST_FILE, "r"))
     sp_instance = get_spotipy_instance()
-    sync_playlist(sp_instance, chosen_playlist_name, playlists[chosen_playlist_name])
+    if chosen_playlist_name in playlists:
+        sync_playlist(sp_instance, chosen_playlist_name, playlists[chosen_playlist_name])
+    else:
+        raise Exception("Specified playlist does not exist. Perhaps there's a typo?")
