@@ -30,6 +30,7 @@ if __name__ == '__main__':
             playlists_to_exclude = f.read().split("\n")
 
     subset_apple_playlists = {k: v for k, v in apple_playlists.items() if k not in playlists_to_exclude}
+    subset_apple_playlists = dict(sorted(subset_apple_playlists.items(), key=lambda item: len(item[-1])))
 
-    for playlist_name, playlist_tracks in apple_playlists.items():
+    for playlist_name, playlist_tracks in subset_apple_playlists.items():
         sync_playlist(sp, playlist_name, playlist_tracks)
