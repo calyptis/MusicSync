@@ -68,7 +68,11 @@ def parse_apple_music_library(filename: str = APPLE_MUSIC_LIBRARY_FILE) -> tuple
     return df_songs, dict_playlist
 
 
-def write_apple_music_library():
+def write_apple_music_library(
+        in_file: str = APPLE_MUSIC_LIBRARY_FILE,
+        out_playlist_file: str = RAW_PLAYLIST_FILE,
+        out_song_file: str = SONG_FILE
+):
     """
     Parses Apply Music Library file and writes output to disk.
 
@@ -76,12 +80,16 @@ def write_apple_music_library():
     -------
         Writes output to file.
     """
-    songs, playlists = parse_apple_music_library(APPLE_MUSIC_LIBRARY_FILE)
-    songs.to_csv(SONG_FILE, index=False)
-    json.dump(playlists, open(RAW_PLAYLIST_FILE, "w"))
+    songs, playlists = parse_apple_music_library(in_file)
+    songs.to_csv(out_song_file, index=False)
+    json.dump(playlists, open(out_playlist_file, "w"))
 
 
-def prepare_playlists():
+def prepare_playlists(
+        in_song_file: str = SONG_FILE,
+        in_playlist_file: str = RAW_PLAYLIST_FILE,
+        out_playlist_file: str = PREPARED_PLAYLIST_FILE
+):
     """
     Transforms the raw playlist file into a playlist file that contains
     a song's name, artist and album.
@@ -90,13 +98,13 @@ def prepare_playlists():
     Returns
     -------
     """
-    apple_music_songs = pd.read_csv(SONG_FILE).set_index("Track ID")
-    apple_music_playlists = json.load(open(RAW_PLAYLIST_FILE, "rb"))
+    apple_music_songs = pd.read_csv(in_song_file).set_index("Track ID")
+    apple_music_playlists = json.load(open(in_playlist_file, "rb"))
     parsed_playlists = {
         k: list(apple_music_songs.loc[v, ["Name", "Artist", "Album"]].apply(tuple, axis=1).values)
         for k, v in apple_music_playlists.items()
     }
-    json.dump(parsed_playlists, open(PREPARED_PLAYLIST_FILE, "w"))
+    json.dump(parsed_playlists, open(out_playlist_file, "w"))
 
 
 def _get_entry(song) -> dict:
