@@ -1,5 +1,6 @@
 import json
 import time
+from requests.exceptions import ReadTimeout
 
 from src.config import CREDENTIALS_PATH
 
@@ -74,11 +75,7 @@ def timeout_wrapper(api_call, n_retries: int = 5):
     while n_retries > count:
         count += 1
         try:
-            return_obj = api_call
-            if return_obj:
-                return return_obj
-            else:
-                pass
-        except TimeoutError:
+            return api_call
+        except TimeoutError or ReadTimeout:
             time.sleep(0.8 * count)
     return None
