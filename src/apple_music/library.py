@@ -1,7 +1,19 @@
+import json
+import logging
+
 import pandas as pd
 import xml.etree.ElementTree as ElTr
-import json
+
 from src.apple_music.config import APPLE_MUSIC_LIBRARY_FILE, SONG_FILE, RAW_PLAYLIST_FILE, PREPARED_PLAYLIST_FILE
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
 
 
 def parse_apple_music_library(filename: str = APPLE_MUSIC_LIBRARY_FILE) -> tuple[pd.DataFrame, dict]:
@@ -98,12 +110,33 @@ def prepare_playlists(
     Returns
     -------
     """
-    apple_music_songs = pd.read_csv(in_song_file).set_index("Track ID")
+    apple_music_songs = pd.read_csv(in_song_file, usecols=[0, 1, 2, 3, 4, 5, 6]).set_index("Track ID")
     apple_music_playlists = json.load(open(in_playlist_file, "rb"))
+
+    # Check for invalid Track IDs
+    mask_valid = apple_music_songs.index.to_series().astype(str).apply(lambda x: x.isdigit())
+    mask_invalid = ~mask_valid
+    apple_music_songs = apple_music_songs.loc[mask_valid]
+    logging.info(f"Number of invalid track IDs: {mask_invalid.sum():,}")
+    valid_songs = set(apple_music_songs.index.tolist())
+
+    # Convert Track IDs in playlist file to tuples of Name, Artist, Album
+    # Since we can sync only based on that information
     parsed_playlists = {
-        k: list(apple_music_songs.loc[v, ["Name", "Artist", "Album"]].apply(tuple, axis=1).values)
+        k: list(
+            apple_music_songs
+            .loc[
+                # Intersection makes sure we only index valid songs
+                # in case some songs are in playlists but not in the library
+                # Perhaps for Apple Music managed playlists.
+                list(set(v).intersection(valid_songs)),
+                ["Name", "Artist", "Album"]]
+            .apply(tuple, axis=1)
+            .values
+        )
         for k, v in apple_music_playlists.items()
     }
+
     json.dump(parsed_playlists, open(out_playlist_file, "w"))
 
 
