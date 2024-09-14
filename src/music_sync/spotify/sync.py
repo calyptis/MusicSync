@@ -357,7 +357,7 @@ def sync_playlist(
 
     # Store information on how well syncing worked
     filename = "".join(e for e in playlist_name if e.isalnum())
-    filepath = os.path.join(log_path, f"{filename}.csv")
+    filepath = log_path / f"{filename}.csv"
     flag = os.path.exists(filepath)
 
     if flag:

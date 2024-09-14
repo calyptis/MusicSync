@@ -2,7 +2,7 @@ import json
 import time
 from requests.exceptions import ReadTimeout
 
-from src.config import CREDENTIALS_PATH
+from music_sync.config import CREDENTIALS_PATH
 
 
 def clean_string(x: str) -> str:
