@@ -36,7 +36,7 @@ def get_chunks(original_list: list, n: int) -> list:
     -------
     """
     for i in range(0, len(original_list), n):
-        yield original_list[i:i + n]
+        yield original_list[i : i + n]
 
 
 def get_credentials(credentials_path: str = CREDENTIALS_PATH) -> dict:
@@ -76,6 +76,6 @@ def timeout_wrapper(api_call, n_retries: int = 5):
         count += 1
         try:
             return api_call
-        except TimeoutError or ReadTimeout:
+        except TimeoutError | ReadTimeout:
             time.sleep(0.8 * count)
     return None

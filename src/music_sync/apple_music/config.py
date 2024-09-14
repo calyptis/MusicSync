@@ -1,5 +1,5 @@
 import os
-from src.config import APPLE_MUSIC_DIR
+from music_sync.config import APPLE_MUSIC_DIR
 
 APPLE_MUSIC_LIBRARY_FILE = os.path.join(APPLE_MUSIC_DIR, "Library.xml")
 SONG_FILE = os.path.join(APPLE_MUSIC_DIR, "songs.csv")

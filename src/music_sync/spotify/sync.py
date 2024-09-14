@@ -3,22 +3,26 @@ import numpy as np
 import pandas as pd
 import os
 import json
-from src.spotify.utils import get_chunks, clean_string, get_credentials, timeout_wrapper
-from src.config import LOG_DIR, SCOPES
-from src.apple_music.config import PREPARED_PLAYLIST_FILE
+from music_sync.spotify.utils import (
+    get_chunks,
+    clean_string,
+    get_credentials,
+    timeout_wrapper,
+)
+from music_sync.config import LOG_DIR, SCOPES
+from music_sync.apple_music.config import PREPARED_PLAYLIST_FILE
 import difflib
 import re
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import logging
+import requests
 
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.StreamHandler()
-    ]
+    handlers=[logging.StreamHandler()],
 )
 
 
@@ -44,24 +48,41 @@ def measure_query_similarity(query: tuple, match: tuple) -> tuple:
     similarities
         Tuple of similarities for (aggregate, song, artist, album)
     """
-    song_name_similarity = difflib.SequenceMatcher(None, query[0], clean_string(match[0])).ratio()
-    artist_name_similarity = difflib.SequenceMatcher(None, query[1], clean_string(match[1])).ratio()
-    album_name_similarity = difflib.SequenceMatcher(None, query[2], clean_string(match[2])).ratio()
+    song_name_similarity = difflib.SequenceMatcher(
+        None, query[0], clean_string(match[0])
+    ).ratio()
+    artist_name_similarity = difflib.SequenceMatcher(
+        None, query[1], clean_string(match[1])
+    ).ratio()
+    album_name_similarity = difflib.SequenceMatcher(
+        None, query[2], clean_string(match[2])
+    ).ratio()
     if query[2] == "":
         album_name_similarity = None
-    similarities = np.array([song_name_similarity, artist_name_similarity, album_name_similarity])
+    similarities = np.array(
+        [song_name_similarity, artist_name_similarity, album_name_similarity]
+    )
     # Getting the song right is slightly more important
     w = np.array([0.4, 0.3, 0.3])
-    ww = np.array([0.6, 0.5])  # In case no album was provided, exclude it from aggregate similarity
+    ww = np.array(
+        [0.6, 0.5]
+    )  # In case no album was provided, exclude it from aggregate similarity
     if query[2] == "":
         total_similarity = sum(similarities[:-1] * ww)
     else:
         total_similarity = sum(similarities * w)
-    similarities = (total_similarity, song_name_similarity, artist_name_similarity, album_name_similarity)
+    similarities = (
+        total_similarity,
+        song_name_similarity,
+        artist_name_similarity,
+        album_name_similarity,
+    )
     return similarities
 
 
-def evaluate_matches(tracks: list, song_name: str, artist_name: str, album_name: str) -> list:
+def evaluate_matches(
+    tracks: list, song_name: str, artist_name: str, album_name: str
+) -> list:
     """
     Calculates similarities between the original query and all returned matches.
     These similarities are at a later stage used to identify the best match.
@@ -88,8 +109,8 @@ def evaluate_matches(tracks: list, song_name: str, artist_name: str, album_name:
             (
                 str(item.get("name", "")),
                 " ".join([str(i.get("name", "")) for i in item.get("artists")]),
-                str(item.get("album").get("name", ""))
-            )
+                str(item.get("album").get("name", "")),
+            ),
         )
         for item in tracks
         if item is not None
@@ -98,7 +119,11 @@ def evaluate_matches(tracks: list, song_name: str, artist_name: str, album_name:
 
 
 def return_best_match(
-        tracks: list, best_match_template: dict, song_name: str, artist_name: str, album_name: str
+    tracks: list,
+    best_match_template: dict,
+    song_name: str,
+    artist_name: str,
+    album_name: str,
 ) -> dict:
     """
     Returns the best match according to string similarities amongst the API results.
@@ -127,7 +152,9 @@ def return_best_match(
     best_match_idx = np.argmax([i[0] for i in matched_items])
     best_match_item = tracks[best_match_idx]
     best_match["Spotify Song Name"] = best_match_item.get("name")
-    best_match["Spotify Artist"] = " ".join([i.get("name") for i in best_match_item.get("artists")])
+    best_match["Spotify Artist"] = " ".join(
+        [i.get("name") for i in best_match_item.get("artists")]
+    )
     best_match["Spotify Album"] = best_match_item.get("album").get("name")
     best_match["Spotify Track ID"] = best_match_item.get("id")
     best_match["Match Score"] = matched_items[best_match_idx][0]
@@ -151,7 +178,7 @@ def get_spotipy_instance() -> spotipy.Spotify:
             client_id=spotify_credentials["client_id"],
             client_secret=spotify_credentials["client_secret"],
             redirect_uri=spotify_credentials["redirect_uri"],
-            scope=SCOPES
+            scope=SCOPES,
         )
     )
     return spotipy_instance
@@ -175,26 +202,32 @@ def get_playlist_tracks(sp: spotipy.Spotify, playlist_id: str) -> list:
     playlist_tracks = []
     offset = 0
     while True:
-        response = timeout_wrapper(sp.playlist_items(
-            playlist_id,
-            offset=offset,
-            fields="items.track.id,items.track.artists.id",
-            additional_types=['track']
-        ))
+        response = timeout_wrapper(
+            sp.playlist_items(
+                playlist_id,
+                offset=offset,
+                fields="items.track.id,items.track.artists.id",
+                additional_types=["track"],
+            )
+        )
         if not response.get("items"):
             break
-        offset += len(response['items'])
+        offset += len(response["items"])
         current_track_extract = []
         for i in response["items"]:
             try:
-                current_track_extract += [(i["track"]["id"], [j["id"] for j in i["track"]["artists"]])]
+                current_track_extract += [
+                    (i["track"]["id"], [j["id"] for j in i["track"]["artists"]])
+                ]
             except TypeError:
                 pass
         playlist_tracks += current_track_extract
     return playlist_tracks
 
 
-def get_best_match(sp: spotipy.Spotify, song_name: str, artist_name: str, album_name: str) -> dict:
+def get_best_match(
+    sp: spotipy.Spotify, song_name: str, artist_name: str, album_name: str
+) -> dict:
     """
     Returns the best Spotify song match for a given Apple Music song, if available.
 
@@ -230,7 +263,9 @@ def get_best_match(sp: spotipy.Spotify, song_name: str, artist_name: str, album_
         attempts += [(song_name_clean, artist_name, album_name)]
         attempts += [(song_name_clean, artist_name, "")]
         # Get first part of song name, before feat
-        song_name_clean_first_collab = re.split(r"(\s?\(?feat\.)|(\s?\(?ft\.)", song_name)[0].strip()
+        song_name_clean_first_collab = re.split(
+            r"(\s?\(?feat\.)|(\s?\(?ft\.)", song_name
+        )[0].strip()
         attempts += [(song_name_clean_first_collab, artist_name, album_name)]
         attempts += [(song_name_clean_first_collab, artist_name, "")]
     # Sometimes there is no match if song includes "remastered"
@@ -257,7 +292,7 @@ def get_best_match(sp: spotipy.Spotify, song_name: str, artist_name: str, album_
         "Match Score": None,
         "Song Match Score": None,
         "Artist Match Score": None,
-        "Album Match Score": None
+        "Album Match Score": None,
     }
 
     attempts_best_matches = []
@@ -270,11 +305,13 @@ def get_best_match(sp: spotipy.Spotify, song_name: str, artist_name: str, album_
         # TODO: Properly catch: requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='api.spotify.com', port=443):
         #  Read timed out. (read timeout=5)
         # noinspection PyBroadException
-        except:
+        except requests.exceptions.ReadTimeout:
             tracks = None
         if tracks is not None and len(tracks.get("items")) > 0:
             items = tracks.get("items")
-            attempts_best_matches += [return_best_match(items, best_match_template.copy(), *attempt)]
+            attempts_best_matches += [
+                return_best_match(items, best_match_template.copy(), *attempt)
+            ]
 
     if attempts_best_matches:
         # Find best match across all the attempts
@@ -286,8 +323,11 @@ def get_best_match(sp: spotipy.Spotify, song_name: str, artist_name: str, album_
 
 
 def sync_playlist(
-        sp: spotipy.Spotify, playlist_name: str, playlist_songs: list[tuple],
-        log_path: str = LOG_DIR, verbose: int = 2
+    sp: spotipy.Spotify,
+    playlist_name: str,
+    playlist_songs: list[tuple],
+    log_path: str = LOG_DIR,
+    verbose: int = 2,
 ):
     """
     Syncs a given playlist.
@@ -316,7 +356,7 @@ def sync_playlist(
         logging.info(f"Working with playlist: {playlist_name}")
 
     # Store information on how well syncing worked
-    filename = ''.join(e for e in playlist_name if e.isalnum())
+    filename = "".join(e for e in playlist_name if e.isalnum())
     filepath = os.path.join(log_path, f"{filename}.csv")
     flag = os.path.exists(filepath)
 
@@ -324,12 +364,13 @@ def sync_playlist(
         if verbose >= 1:
             logging.info("Playlist was already synced once before")
         df_logs = pd.read_csv(filepath)
-        tracks_already_synced = (
-            df_logs
-            .apply(lambda row: tuple(row[["Apple Song Name", "Apple Artist", "Apple Album"]]), axis=1)
-            .tolist()
+        tracks_already_synced = df_logs.apply(
+            lambda row: tuple(row[["Apple Song Name", "Apple Artist", "Apple Album"]]),
+            axis=1,
+        ).tolist()
+        songs_to_sync = list(
+            set([tuple(i) for i in playlist_songs]) - set(tracks_already_synced)
         )
-        songs_to_sync = list(set([tuple(i) for i in playlist_songs]) - set(tracks_already_synced))
         if verbose >= 1:
             logging.info("Need to sync {0} new songs".format(len(songs_to_sync)))
     else:
@@ -349,7 +390,7 @@ def sync_playlist(
     # If playlist does not already exist on Spotify, create it
     if playlist_name not in d_existing_playlists:
         if verbose >= 1:
-            logging.info(f"Spotify playlist was newly created")
+            logging.info("Spotify playlist was newly created")
         info = sp.user_playlist_create(user_id, playlist_name, public=False)
         tracks = []
         playlist_id = info["id"]
@@ -357,7 +398,9 @@ def sync_playlist(
         playlist_id = d_existing_playlists[playlist_name]
         tracks = get_playlist_tracks(sp, playlist_id)
         if verbose >= 1:
-            logging.info(f"Spotify playlist already exists and contained {len(tracks)} songs")
+            logging.info(
+                f"Spotify playlist already exists and contained {len(tracks)} songs"
+            )
 
     if verbose >= 1:
         logging.info(f"Starting to sync {len(songs_to_sync)} songs")
@@ -365,7 +408,7 @@ def sync_playlist(
     update_frequency = 50
     count = 0
     matched_songs = []
-    for (song_name, song_artist, album_name) in songs_to_sync:
+    for song_name, song_artist, album_name in songs_to_sync:
         count += 1
         matched_songs += [get_best_match(sp, song_name, song_artist, album_name)]
         if verbose > 1:
@@ -374,7 +417,12 @@ def sync_playlist(
 
     if matched_songs:
         matched_songs = pd.DataFrame(list(matched_songs))
-        matched_songs.to_csv(filepath, index=False, mode="a" if flag else "w", header=False if flag else True)
+        matched_songs.to_csv(
+            filepath,
+            index=False,
+            mode="a" if flag else "w",
+            header=False if flag else True,
+        )
         # Subset songs to include only those that are not already present in the Spotify playlist
         unmatched_mask = matched_songs["Spotify Track ID"].isnull()
         mask = (~matched_songs["Spotify Track ID"].isin(tracks)) & (~unmatched_mask)
@@ -382,8 +430,9 @@ def sync_playlist(
 
         n_songs_actually_added = len(songs_to_be_added)
         n_songs_supposed_to_be_added = len(matched_songs)
-        msg = "{0} songs to be added to Spotify playlist from a total of {1} songs"\
-            .format(n_songs_actually_added, n_songs_supposed_to_be_added)
+        msg = "{0} songs to be added to Spotify playlist from a total of {1} songs".format(
+            n_songs_actually_added, n_songs_supposed_to_be_added
+        )
         if (n_songs_actually_added != n_songs_supposed_to_be_added) & (verbose >= 1):
             logging.warning(msg)
         elif verbose >= 1:
@@ -395,15 +444,12 @@ def sync_playlist(
         chunks = get_chunks(songs_to_be_added["Spotify Track ID"].values, 100)
         for chunk in chunks:
             # Add matched songs to Spotify playlist
-            sp.playlist_add_items(
-                playlist_id,
-                chunk
-            )
+            sp.playlist_add_items(playlist_id, chunk)
     if verbose >= 1:
         logging.info(f"Done with playlist {playlist_name}.\n")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # noinspection PyTypeChecker
     parser.add_argument("--name", type=str, nargs=None)
@@ -412,6 +458,8 @@ if __name__ == '__main__':
     playlists = json.load(open(PREPARED_PLAYLIST_FILE, "r"))
     sp_instance = get_spotipy_instance()
     if chosen_playlist_name in playlists:
-        sync_playlist(sp_instance, chosen_playlist_name, playlists[chosen_playlist_name])
+        sync_playlist(
+            sp_instance, chosen_playlist_name, playlists[chosen_playlist_name]
+        )
     else:
         raise Exception("Specified playlist does not exist. Perhaps there's a typo?")

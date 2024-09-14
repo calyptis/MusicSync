@@ -1,0 +1,21 @@
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.4.0
+  hooks:
+  - id: check-case-conflict
+  - id: check-merge-conflict
+  - id: check-json
+  - id: check-toml
+  - id: check-xml
+  - id: check-yaml
+  - id: end-of-file-fixer
+  - id: trailing-whitespace
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.1.13
+  hooks:
+    - id: ruff
+      types_or: [ python, pyi, jupyter ]
+      args: [ --exit-zero ]
+      verbose: true
+    - id: ruff-format
+      types_or: [ python, pyi, jupyter ]

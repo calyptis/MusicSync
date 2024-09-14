@@ -1,0 +1,6 @@
+name: music-sync
+dependencies:
+  - python~=3.10.14
+  - pip
+  - pip:
+    - -r requirements.txt

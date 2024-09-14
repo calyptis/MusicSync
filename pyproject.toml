@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "music_sync"
+authors = [{"name" = "Lucas Chizzali"}]
+description = "Syncing Apple Music Library to Spotify"
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+version = {attr = "music_sync.__version__"}
+
+[tool.ruff]
+extend-include = ["*.ipynb"]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+extend-select = [
+    "W605",   # pycodestyle: invalid-escape-sequence
+    "S102",   # flake8-bandit: exec-builtin
+    "INP",    # flake8-no-pep420
+    "PYI",    # flake8-pyi
+    "PT",     # flake8-pytest-style
+    "PGH",    # pygrep-hooks
+    "PL",     # Pylint
+    "NPY",    # NumPy-specific rules
+    "RUF",    # Ruff-specific rules
+]
+ignore = [
+    "NPY002", # numpy-legacy-random
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/**" = ["INP001"]
+"[!t][!e][!s][!t][!s]*/**" = ["PT"]

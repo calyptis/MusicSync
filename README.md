@@ -43,7 +43,28 @@ cd MusicSync
 source prepare_env.sh
 ```
 
-### 2.2 Specify your credentials
+### 2.2 Install module
+
+Install pinned development dependencies using:
+
+```
+pip install -r requirements.txt
+```
+
+If you are using Conda to manage your Python environments:
+
+```
+conda env create -f environment.yml
+```
+
+Alternatively, if you are using an existing environment, you can install the module in [editable mode](https://setuptools.pypa.io/en/latest/userguide/development_mode.html), which includes only minimal dependencies:
+
+```
+pip install -e .
+```
+
+
+### 2.3 Specify your credentials
 
 In the folder `credentials` create a file named `credentials.json` 
 where you specify the configurations you obtained in step 1.6 & 1.7.
