@@ -1,5 +1,11 @@
-spotipy~=2.20.0
-numpy~=1.23.2
-pandas~=1.4.0
-flask~=2.2.2
-werkzeug~=2.2.2
+-e .
+mypy
+notebook
+pre-commit
+pytest
+ruff
+auto_mix_prep==0.2.0
+numpy==2.1.1
+pandas==2.2.2
+Requests==2.32.3
+spotipy==2.23.0

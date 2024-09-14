@@ -4,19 +4,25 @@ import logging
 import pandas as pd
 import xml.etree.ElementTree as ElTr
 
-from src.apple_music.config import APPLE_MUSIC_LIBRARY_FILE, SONG_FILE, RAW_PLAYLIST_FILE, PREPARED_PLAYLIST_FILE
+from music_sync.apple_music.config import (
+    APPLE_MUSIC_LIBRARY_FILE,
+    SONG_FILE,
+    RAW_PLAYLIST_FILE,
+    PREPARED_PLAYLIST_FILE,
+)
+from music_sync.apple_music.utils import get_entry
 
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.StreamHandler()
-    ]
+    handlers=[logging.StreamHandler()],
 )
 
 
-def parse_apple_music_library(filename: str = APPLE_MUSIC_LIBRARY_FILE) -> tuple[pd.DataFrame, dict]:
+def parse_apple_music_library(
+    filename: str = APPLE_MUSIC_LIBRARY_FILE,
+) -> tuple[pd.DataFrame, dict]:
     """
     Parses Apple Music library, which is exported using File -> Library -> Export Library...
     It creates two objects, a dataframe containing all relevant information of all the songs in the library
@@ -43,9 +49,9 @@ def parse_apple_music_library(filename: str = APPLE_MUSIC_LIBRARY_FILE) -> tuple
     # Song list at next dict attribute
     song_list = library.find("dict")
     # Each song has first an ID entry <key> and then its info <dict>
-    songs = song_list.findall('dict')
+    songs = song_list.findall("dict")
     # Load songs into a dataframe
-    df_songs = pd.DataFrame(list(map(_get_entry, songs)))
+    df_songs = pd.DataFrame(list(map(get_entry, songs)))
     # Get correct dtypes
     tags = {}
     for s in songs:
@@ -56,9 +62,9 @@ def parse_apple_music_library(filename: str = APPLE_MUSIC_LIBRARY_FILE) -> tuple
                 tags[e] = t
     # Transform columns to have correct type
     for col in df_songs.columns:
-        if tags[col] == 'integer':
+        if tags[col] == "integer":
             df_songs[col] = pd.to_numeric(df_songs[col])
-        if tags[col] == 'date':
+        if tags[col] == "date":
             df_songs[col] = pd.to_datetime(df_songs[col], yearfirst=True)
 
     # /// PLAYLISTS \\\
@@ -81,9 +87,9 @@ def parse_apple_music_library(filename: str = APPLE_MUSIC_LIBRARY_FILE) -> tuple
 
 
 def write_apple_music_library(
-        in_file: str = APPLE_MUSIC_LIBRARY_FILE,
-        out_playlist_file: str = RAW_PLAYLIST_FILE,
-        out_song_file: str = SONG_FILE
+    in_file: str = APPLE_MUSIC_LIBRARY_FILE,
+    out_playlist_file: str = RAW_PLAYLIST_FILE,
+    out_song_file: str = SONG_FILE,
 ):
     """
     Parses Apply Music Library file and writes output to disk.
@@ -98,9 +104,9 @@ def write_apple_music_library(
 
 
 def prepare_playlists(
-        in_song_file: str = SONG_FILE,
-        in_playlist_file: str = RAW_PLAYLIST_FILE,
-        out_playlist_file: str = PREPARED_PLAYLIST_FILE
+    in_song_file: str = SONG_FILE,
+    in_playlist_file: str = RAW_PLAYLIST_FILE,
+    out_playlist_file: str = PREPARED_PLAYLIST_FILE,
 ):
     """
     Transforms the raw playlist file into a playlist file that contains
@@ -110,11 +116,15 @@ def prepare_playlists(
     Returns
     -------
     """
-    apple_music_songs = pd.read_csv(in_song_file, usecols=[0, 1, 2, 3, 4, 5, 6]).set_index("Track ID")
+    apple_music_songs = pd.read_csv(
+        in_song_file, usecols=[0, 1, 2, 3, 4, 5, 6]
+    ).set_index("Track ID")
     apple_music_playlists = json.load(open(in_playlist_file, "rb"))
 
     # Check for invalid Track IDs
-    mask_valid = apple_music_songs.index.to_series().astype(str).apply(lambda x: x.isdigit())
+    mask_valid = (
+        apple_music_songs.index.to_series().astype(str).apply(lambda x: x.isdigit())
+    )
     mask_invalid = ~mask_valid
     apple_music_songs = apple_music_songs.loc[mask_valid]
     logging.info(f"Number of invalid track IDs: {mask_invalid.sum():,}")
@@ -124,13 +134,12 @@ def prepare_playlists(
     # Since we can sync only based on that information
     parsed_playlists = {
         k: list(
-            apple_music_songs
-            .loc[
+            apple_music_songs.loc[
                 # Intersection makes sure we only index valid songs
                 # in case some songs are in playlists but not in the library
                 # Perhaps for Apple Music managed playlists.
-                list(set(v).intersection(valid_songs)),
-                ["Name", "Artist", "Album"]]
+                list(set(v).intersection(valid_songs)), ["Name", "Artist", "Album"]
+            ]
             .apply(tuple, axis=1)
             .values
         )
@@ -138,22 +147,3 @@ def prepare_playlists(
     }
 
     json.dump(parsed_playlists, open(out_playlist_file, "w"))
-
-
-def _get_entry(song) -> dict:
-    """
-    Parses an XML song tag
-
-    Parameters
-    ----------
-    song
-
-    Returns
-    -------
-    """
-    return {song[i].text: song[i+1].text for i in range(0, len(song) - 1, 2)}
-
-
-if __name__ == '__main__':
-    write_apple_music_library()
-    prepare_playlists()
