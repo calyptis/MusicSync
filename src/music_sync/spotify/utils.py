@@ -1,8 +1,20 @@
+import logging
 import json
 import time
 from requests.exceptions import ReadTimeout
+import re
+import os
+
+import pandas as pd
 
 from music_sync.config import CREDENTIALS_PATH
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()],
+)
 
 
 def clean_string(x: str) -> str:
@@ -79,3 +91,57 @@ def timeout_wrapper(api_call, n_retries: int = 5):
         except TimeoutError | ReadTimeout:
             time.sleep(0.8 * count)
     return None
+
+
+def generate_additional_attempts(song_name: str, artist_name: str, album_name: str):
+    attempts = []
+    # Sometimes there is no match if song includes "feat." or "ft."
+    if "feat." in song_name or "ft." in song_name:
+        # Replace feat in song name
+        song_name_clean = song_name.replace("feat. ", " ").replace("ft. ", " ")
+        attempts += [(song_name_clean, artist_name, album_name)]
+        attempts += [(song_name_clean, artist_name, "")]
+        # Get first part of song name, before feat
+        song_name_clean_first_collab = re.split(
+            r"(\s?\(?feat\.)|(\s?\(?ft\.)", song_name
+        )[0].strip()
+        attempts += [(song_name_clean_first_collab, artist_name, album_name)]
+        attempts += [(song_name_clean_first_collab, artist_name, "")]
+    # Sometimes there is no match if song includes "remastered"
+    if "remastered" in song_name:
+        song_name_clean = re.sub(r"(\s?remastered\s?)", " ", song_name).strip()
+        attempts += [(song_name_clean, artist_name, album_name)]
+        attempts += [(song_name_clean, artist_name, "")]
+    # Sometimes there is no match if artist is collaboration and includes "&", like Brian Eno & John Cale
+    if "&" in artist_name:
+        artist_name_clean = artist_name.split("&")[0]
+        attempts += [(song_name, artist_name_clean, album_name)]
+        attempts += [(song_name, artist_name_clean, "")]
+        # Sometimes it helps to replace & with a comma
+        attempts += [(song_name, artist_name.replace(" & ", ", "), album_name)]
+        attempts += [(song_name, artist_name.replace(" & ", ", "), "")]
+
+    return attempts
+
+
+def get_songs_to_sync(
+    playlist_name: str, log_path: str, playlist_songs: list[str]
+) -> list[tuple]:
+    # Store information on how well syncing worked
+    filename = "".join(e for e in playlist_name if e.isalnum())
+    filepath = log_path / f"{filename}.csv"
+    flag_already_synced = os.path.exists(filepath)
+    songs_to_sync = playlist_songs
+
+    if flag_already_synced:
+        logging.info("Playlist was already synced once before")
+        df_logs = pd.read_csv(filepath)
+        tracks_already_synced = df_logs.apply(
+            lambda row: tuple(row[["Apple Song Name", "Apple Artist", "Apple Album"]]),
+            axis=1,
+        ).tolist()
+        songs_to_sync = list(
+            set([tuple(i) for i in playlist_songs]) - set(tracks_already_synced)
+        )
+
+    return songs_to_sync, flag_already_synced

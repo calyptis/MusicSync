@@ -8,6 +8,8 @@ from music_sync.spotify.utils import (
     clean_string,
     get_credentials,
     timeout_wrapper,
+    generate_additional_attempts,
+    get_songs_to_sync,
 )
 from music_sync.config import LOG_DIR, SCOPES
 from music_sync.apple_music.config import PREPARED_PLAYLIST_FILE
@@ -255,32 +257,7 @@ def get_best_match(
     # Sometimes there is no match if album name is included, e.g.
     # bloody valentine	Machine Gun Kelly	bloody valentine - Single
     attempts += [(song_name, artist_name, "")]
-
-    # Sometimes there is no match if song includes "feat." or "ft."
-    if "feat." in song_name or "ft." in song_name:
-        # Replace feat in song name
-        song_name_clean = song_name.replace("feat. ", " ").replace("ft. ", " ")
-        attempts += [(song_name_clean, artist_name, album_name)]
-        attempts += [(song_name_clean, artist_name, "")]
-        # Get first part of song name, before feat
-        song_name_clean_first_collab = re.split(
-            r"(\s?\(?feat\.)|(\s?\(?ft\.)", song_name
-        )[0].strip()
-        attempts += [(song_name_clean_first_collab, artist_name, album_name)]
-        attempts += [(song_name_clean_first_collab, artist_name, "")]
-    # Sometimes there is no match if song includes "remastered"
-    if "remastered" in song_name:
-        song_name_clean = re.sub(r"(\s?remastered\s?)", " ", song_name).strip()
-        attempts += [(song_name_clean, artist_name, album_name)]
-        attempts += [(song_name_clean, artist_name, "")]
-    # Sometimes there is no match if artist is collaboration and includes "&", like Brian Eno & John Cale
-    if "&" in artist_name:
-        artist_name_clean = artist_name.split("&")[0]
-        attempts += [(song_name, artist_name_clean, album_name)]
-        attempts += [(song_name, artist_name_clean, "")]
-        # Sometimes it helps to replace & with a comma
-        attempts += [(song_name, artist_name.replace(" & ", ", "), album_name)]
-        attempts += [(song_name, artist_name.replace(" & ", ", "), "")]
+    attempts += generate_additional_attempts(song_name, artist_name, album_name)
 
     best_match_template = {
         "Apple Song Name": song_name,
@@ -302,9 +279,6 @@ def get_best_match(
         try:
             tracks = timeout_wrapper(sp.search(query, limit=15)).get("tracks")
         # except spotipy.exceptions.SpotifyException or requests.exceptions.ReadTimeout:
-        # TODO: Properly catch: requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='api.spotify.com', port=443):
-        #  Read timed out. (read timeout=5)
-        # noinspection PyBroadException
         except requests.exceptions.ReadTimeout:
             tracks = None
         if tracks is not None and len(tracks.get("items")) > 0:
@@ -351,23 +325,11 @@ def sync_playlist(
     """
     logging.info(f"Working with playlist: {playlist_name}")
 
-    # Store information on how well syncing worked
-    filename = "".join(e for e in playlist_name if e.isalnum())
-    filepath = log_path / f"{filename}.csv"
-    flag_already_synced = os.path.exists(filepath)
-    songs_to_sync = playlist_songs
+    songs_to_sync, flag_already_synced = get_songs_to_sync(
+        playlist_name, log_path, playlist_songs
+    )
 
-    if flag_already_synced:
-        logging.info("Playlist was already synced once before")
-        df_logs = pd.read_csv(filepath)
-        tracks_already_synced = df_logs.apply(
-            lambda row: tuple(row[["Apple Song Name", "Apple Artist", "Apple Album"]]),
-            axis=1,
-        ).tolist()
-        songs_to_sync = list(
-            set([tuple(i) for i in playlist_songs]) - set(tracks_already_synced)
-        )
-        logging.info("Need to sync {0} new songs".format(len(songs_to_sync)))
+    logging.info("Need to sync {0} new songs".format(len(songs_to_sync)))
 
     user_id = sp.current_user()["id"]
     offset = 0
@@ -380,6 +342,7 @@ def sync_playlist(
             break
         d_existing_playlists = {**d_existing_playlists, **d_playlists}
         offset += limit
+
     # If playlist does not already exist on Spotify, create it
     if playlist_name not in d_existing_playlists:
         logging.info("Spotify playlist was newly created")
