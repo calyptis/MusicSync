@@ -1,7 +1,6 @@
 import argparse
 import numpy as np
 import pandas as pd
-import os
 import json
 from music_sync.spotify.utils import (
     get_chunks,
