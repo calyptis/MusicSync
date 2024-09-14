@@ -327,7 +327,6 @@ def sync_playlist(
     playlist_name: str,
     playlist_songs: list[tuple],
     log_path: str = LOG_DIR,
-    verbose: int = 2,
 ):
     """
     Syncs a given playlist.
@@ -345,8 +344,6 @@ def sync_playlist(
     playlist_songs
         The songs that should be in this playlist in the form of [(song name, artist name, album name), ...]
     log_path
-    verbose
-        How much information on the progress of the syncing should be displayed to the console
 
     Returns
     -------
@@ -357,9 +354,10 @@ def sync_playlist(
     # Store information on how well syncing worked
     filename = "".join(e for e in playlist_name if e.isalnum())
     filepath = log_path / f"{filename}.csv"
-    flag = os.path.exists(filepath)
+    flag_already_synced = os.path.exists(filepath)
+    songs_to_sync = playlist_songs
 
-    if flag:
+    if flag_already_synced:
         logging.info("Playlist was already synced once before")
         df_logs = pd.read_csv(filepath)
         tracks_already_synced = df_logs.apply(
@@ -370,8 +368,6 @@ def sync_playlist(
             set([tuple(i) for i in playlist_songs]) - set(tracks_already_synced)
         )
         logging.info("Need to sync {0} new songs".format(len(songs_to_sync)))
-    else:
-        songs_to_sync = playlist_songs
 
     user_id = sp.current_user()["id"]
     offset = 0
