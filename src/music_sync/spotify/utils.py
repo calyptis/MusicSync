@@ -125,11 +125,8 @@ def generate_additional_attempts(song_name: str, artist_name: str, album_name: s
 
 
 def get_songs_to_sync(
-    playlist_name: str, log_path: str, playlist_songs: list[str]
-) -> list[tuple]:
-    # Store information on how well syncing worked
-    filename = "".join(e for e in playlist_name if e.isalnum())
-    filepath = log_path / f"{filename}.csv"
+    filepath: str, playlist_songs: list[tuple]
+) -> tuple[list[tuple], bool]:
     flag_already_synced = os.path.exists(filepath)
     songs_to_sync = playlist_songs
 

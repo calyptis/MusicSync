@@ -324,9 +324,11 @@ def sync_playlist(
     """
     logging.info(f"Working with playlist: {playlist_name}")
 
-    songs_to_sync, flag_already_synced = get_songs_to_sync(
-        playlist_name, log_path, playlist_songs
-    )
+    # Store information on how well syncing worked
+    filename = "".join(e for e in playlist_name if e.isalnum())
+    filepath = log_path / f"{filename}.csv"
+
+    songs_to_sync, flag_already_synced = get_songs_to_sync(filepath, playlist_songs)
 
     logging.info("Need to sync {0} new songs".format(len(songs_to_sync)))
 
