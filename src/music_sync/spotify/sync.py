@@ -352,8 +352,7 @@ def sync_playlist(
     -------
 
     """
-    if verbose >= 1:
-        logging.info(f"Working with playlist: {playlist_name}")
+    logging.info(f"Working with playlist: {playlist_name}")
 
     # Store information on how well syncing worked
     filename = "".join(e for e in playlist_name if e.isalnum())
@@ -361,8 +360,7 @@ def sync_playlist(
     flag = os.path.exists(filepath)
 
     if flag:
-        if verbose >= 1:
-            logging.info("Playlist was already synced once before")
+        logging.info("Playlist was already synced once before")
         df_logs = pd.read_csv(filepath)
         tracks_already_synced = df_logs.apply(
             lambda row: tuple(row[["Apple Song Name", "Apple Artist", "Apple Album"]]),
@@ -371,8 +369,7 @@ def sync_playlist(
         songs_to_sync = list(
             set([tuple(i) for i in playlist_songs]) - set(tracks_already_synced)
         )
-        if verbose >= 1:
-            logging.info("Need to sync {0} new songs".format(len(songs_to_sync)))
+        logging.info("Need to sync {0} new songs".format(len(songs_to_sync)))
     else:
         songs_to_sync = playlist_songs
 
@@ -389,21 +386,18 @@ def sync_playlist(
         offset += limit
     # If playlist does not already exist on Spotify, create it
     if playlist_name not in d_existing_playlists:
-        if verbose >= 1:
-            logging.info("Spotify playlist was newly created")
+        logging.info("Spotify playlist was newly created")
         info = sp.user_playlist_create(user_id, playlist_name, public=False)
         tracks = []
         playlist_id = info["id"]
     else:
         playlist_id = d_existing_playlists[playlist_name]
         tracks = get_playlist_tracks(sp, playlist_id)
-        if verbose >= 1:
-            logging.info(
-                f"Spotify playlist already exists and contained {len(tracks)} songs"
-            )
+        logging.info(
+            f"Spotify playlist already exists and contained {len(tracks)} songs"
+        )
 
-    if verbose >= 1:
-        logging.info(f"Starting to sync {len(songs_to_sync)} songs")
+    logging.info(f"Starting to sync {len(songs_to_sync)} songs")
     # For above songs, search for availability in Spotify's catalogue
     update_frequency = 50
     count = 0
@@ -411,9 +405,8 @@ def sync_playlist(
     for song_name, song_artist, album_name in songs_to_sync:
         count += 1
         matched_songs += [get_best_match(sp, song_name, song_artist, album_name)]
-        if verbose > 1:
-            if count % update_frequency == 0:
-                logging.info(f"Synced {count} out of {len(songs_to_sync)} songs")
+        if count % update_frequency == 0:
+            logging.info(f"Synced {count} out of {len(songs_to_sync)} songs")
 
     if matched_songs:
         matched_songs = pd.DataFrame(list(matched_songs))
@@ -433,20 +426,15 @@ def sync_playlist(
         msg = "{0} songs to be added to Spotify playlist from a total of {1} songs".format(
             n_songs_actually_added, n_songs_supposed_to_be_added
         )
-        if (n_songs_actually_added != n_songs_supposed_to_be_added) & (verbose >= 1):
-            logging.warning(msg)
-        elif verbose >= 1:
-            logging.info(msg)
-        else:
-            pass
+        logging.info(msg)
 
         # Break songs to be added into chunks so as not to cause timeout
         chunks = get_chunks(songs_to_be_added["Spotify Track ID"].values, 100)
         for chunk in chunks:
             # Add matched songs to Spotify playlist
             sp.playlist_add_items(playlist_id, chunk)
-    if verbose >= 1:
-        logging.info(f"Done with playlist {playlist_name}.\n")
+
+    logging.info(f"Done with playlist {playlist_name}.\n")
 
 
 if __name__ == "__main__":
