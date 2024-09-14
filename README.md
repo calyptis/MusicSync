@@ -66,7 +66,7 @@ pip install -e .
 
 ### 2.3 Specify your credentials
 
-In the folder `credentials` create a file named `credentials.json` 
+In the folder `credentials` create a file named `credentials.json`
 where you specify the configurations you obtained in step 1.6 & 1.7.
 
 The file has the following structure:
@@ -88,26 +88,26 @@ replace your client ID with value from step 1.6 and your client secret from step
 First and foremost
 - open Music app (macOS or Windows, tested with app version `1.2.5.7`)
 - Go to `File -> Library -> Export Library...`
-- Save file as `Library.xml` in `data/apple_music/` 
+- Save file as `Library.xml` in `data/apple_music/`
 
 Only then, can your playlists be synced.
 
 ### To run the entire pipeline (parse Apply Music Library + sync it in its entirety)
 ```bash
-python src/main.py
+python -m music_sync.main
 ```
 
 ### To sync a specific playlist
 1. If Apple Music library has not yet been parsed:
 
 ```bash
-python src/apple_music/library.py
+python -m music_sync.apple_music.main
 ```
 
 2. Sync a specific playlist
 
 ```bash
-python src/spotify/sync.py --name "Apple Music Playlist Name"
+python -m music_sync.spotify.main --name "Apple Music Playlist Name"
 ```
 
 # Related projects

@@ -6,8 +6,10 @@ import re
 import os
 
 import pandas as pd
+from spotipy.oauth2 import SpotifyOAuth
+import spotipy
 
-from music_sync.config import CREDENTIALS_PATH
+from music_sync.config import CREDENTIALS_PATH, SCOPES
 
 
 logging.basicConfig(
@@ -122,6 +124,26 @@ def generate_additional_attempts(song_name: str, artist_name: str, album_name: s
         attempts += [(song_name, artist_name.replace(" & ", ", "), "")]
 
     return attempts
+
+
+def get_spotipy_instance() -> spotipy.Spotify:
+    """
+    Initiates the spotipy instance to allow API calls.
+
+    Returns
+    -------
+    spotipy_instance
+    """
+    spotify_credentials = get_credentials()
+    spotipy_instance = spotipy.Spotify(
+        auth_manager=SpotifyOAuth(
+            client_id=spotify_credentials["client_id"],
+            client_secret=spotify_credentials["client_secret"],
+            redirect_uri=spotify_credentials["redirect_uri"],
+            scope=SCOPES,
+        )
+    )
+    return spotipy_instance
 
 
 def get_songs_to_sync(

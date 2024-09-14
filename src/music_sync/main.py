@@ -2,18 +2,10 @@ import os
 import logging
 import json
 
-from music_sync.spotify.sync import (
-    get_spotipy_instance,
-    sync_playlist
-)
-from music_sync.apple_music.config import (
-    PREPARED_PLAYLIST_FILE,
-    EXCLUDE_PLAYLIST_FILE
-)
-from music_sync.apple_music.library import (
-    write_apple_music_library,
-    prepare_playlists
-)
+from music_sync.spotify.sync import sync_playlist
+from music_sync.spotify.utils import get_spotipy_instance
+from music_sync.apple_music.config import PREPARED_PLAYLIST_FILE, EXCLUDE_PLAYLIST_FILE
+from music_sync.apple_music.main import main as prepare_library
 
 
 logging.basicConfig(
@@ -23,10 +15,9 @@ logging.basicConfig(
 )
 
 
-if __name__ == "__main__":
+def main():
     logging.info("Parsing Apple Music library\n==============")
-    write_apple_music_library()
-    prepare_playlists()
+    prepare_library()
 
     logging.info("Sync to Spotify\n==============")
     # Sync to Spotify
@@ -46,3 +37,7 @@ if __name__ == "__main__":
 
     for playlist_name, playlist_tracks in subset_apple_playlists.items():
         sync_playlist(sp, playlist_name, playlist_tracks)
+
+
+if __name__ == "__main__":
+    main()

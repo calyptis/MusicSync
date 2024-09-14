@@ -10,6 +10,7 @@ from music_sync.apple_music.config import (
     RAW_PLAYLIST_FILE,
     PREPARED_PLAYLIST_FILE,
 )
+from music_sync.apple_music.utils import get_entry
 
 
 logging.basicConfig(
@@ -50,7 +51,7 @@ def parse_apple_music_library(
     # Each song has first an ID entry <key> and then its info <dict>
     songs = song_list.findall("dict")
     # Load songs into a dataframe
-    df_songs = pd.DataFrame(list(map(_get_entry, songs)))
+    df_songs = pd.DataFrame(list(map(get_entry, songs)))
     # Get correct dtypes
     tags = {}
     for s in songs:
@@ -146,22 +147,3 @@ def prepare_playlists(
     }
 
     json.dump(parsed_playlists, open(out_playlist_file, "w"))
-
-
-def _get_entry(song) -> dict:
-    """
-    Parses an XML song tag
-
-    Parameters
-    ----------
-    song
-
-    Returns
-    -------
-    """
-    return {song[i].text: song[i + 1].text for i in range(0, len(song) - 1, 2)}
-
-
-if __name__ == "__main__":
-    write_apple_music_library()
-    prepare_playlists()

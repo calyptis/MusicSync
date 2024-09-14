@@ -1,7 +1,5 @@
-import argparse
 import numpy as np
 import pandas as pd
-import json
 from music_sync.spotify.utils import (
     get_chunks,
     clean_string,
@@ -11,11 +9,9 @@ from music_sync.spotify.utils import (
     get_songs_to_sync,
 )
 from music_sync.config import LOG_DIR, SCOPES
-from music_sync.apple_music.config import PREPARED_PLAYLIST_FILE
 import difflib
 import re
 import spotipy
-from spotipy.oauth2 import SpotifyOAuth
 import logging
 import requests
 
@@ -163,26 +159,6 @@ def return_best_match(
     best_match["Artist Match Score"] = matched_items[best_match_idx][2]
     best_match["Album Match Score"] = matched_items[best_match_idx][-1]
     return best_match
-
-
-def get_spotipy_instance() -> spotipy.Spotify:
-    """
-    Initiates the spotipy instance to allow API calls.
-
-    Returns
-    -------
-    spotipy_instance
-    """
-    spotify_credentials = get_credentials()
-    spotipy_instance = spotipy.Spotify(
-        auth_manager=SpotifyOAuth(
-            client_id=spotify_credentials["client_id"],
-            client_secret=spotify_credentials["client_secret"],
-            redirect_uri=spotify_credentials["redirect_uri"],
-            scope=SCOPES,
-        )
-    )
-    return spotipy_instance
 
 
 def get_playlist_tracks(sp: spotipy.Spotify, playlist_id: str) -> list:
@@ -395,19 +371,3 @@ def sync_playlist(
             sp.playlist_add_items(playlist_id, chunk)
 
     logging.info(f"Done with playlist {playlist_name}.\n")
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    # noinspection PyTypeChecker
-    parser.add_argument("--name", type=str, nargs=None)
-    args = parser.parse_args()
-    chosen_playlist_name = args.name
-    playlists = json.load(open(PREPARED_PLAYLIST_FILE, "r"))
-    sp_instance = get_spotipy_instance()
-    if chosen_playlist_name in playlists:
-        sync_playlist(
-            sp_instance, chosen_playlist_name, playlists[chosen_playlist_name]
-        )
-    else:
-        raise Exception("Specified playlist does not exist. Perhaps there's a typo?")
