@@ -3,12 +3,11 @@ import pandas as pd
 from music_sync.spotify.utils import (
     get_chunks,
     clean_string,
-    get_credentials,
     timeout_wrapper,
     generate_additional_attempts,
     get_songs_to_sync,
 )
-from music_sync.config import LOG_DIR, SCOPES
+from music_sync.config import LOG_DIR
 import difflib
 import re
 import spotipy
