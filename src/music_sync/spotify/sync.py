@@ -13,6 +13,7 @@ import re
 import spotipy
 import logging
 import requests
+import pathlib
 
 
 logging.basicConfig(
@@ -274,7 +275,7 @@ def sync_playlist(
     sp: spotipy.Spotify,
     playlist_name: str,
     playlist_songs: list[tuple],
-    log_path: str = LOG_DIR,
+    log_path: pathlib.Path = LOG_DIR,
 ):
     """
     Syncs a given playlist.
