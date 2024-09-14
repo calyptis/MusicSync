@@ -409,8 +409,8 @@ def sync_playlist(
         matched_songs.to_csv(
             filepath,
             index=False,
-            mode="a" if flag else "w",
-            header=False if flag else True,
+            mode="a" if flag_already_synced else "w",
+            header=False if flag_already_synced else True,
         )
         # Subset songs to include only those that are not already present in the Spotify playlist
         unmatched_mask = matched_songs["Spotify Track ID"].isnull()
