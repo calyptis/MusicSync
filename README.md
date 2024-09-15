@@ -2,6 +2,8 @@
 
 ## Summary
 Synchronize Apple Music library with Spotify.
+**Only works with playlists**. Hence, you need playlists in your Apple Music library for these scripts to run.
+To sync your entire library, create a playlist that holds all your songs.
 
 ## Features
 - Complete control over your data (data is only processed by Spotify's API, no third party)
@@ -40,7 +42,6 @@ The below instructions are for Linux or MacOS.
 ```commandline
 git clone git@github.com:calyptis/MusicSync.git
 cd MusicSync
-source prepare_env.sh
 ```
 
 ### 2.2 Install module
@@ -85,12 +86,12 @@ replace your client ID with value from step 1.6 and your client secret from step
 
 # User instructions
 
-First and foremost
+Get Apple Music info:
 - open Music app (macOS or Windows, tested with app version `1.2.5.7`)
 - Go to `File -> Library -> Export Library...`
 - Save file as `Library.xml` in `data/apple_music/`
 
-Only then, can your playlists be synced.
+Now, playlists can be synced.
 
 ### To run the entire pipeline (parse Apply Music Library + sync it in its entirety)
 ```bash
