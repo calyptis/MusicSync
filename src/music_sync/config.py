@@ -18,3 +18,18 @@ SCOPES_LIST = [
     "playlist-modify-public",
 ]
 SCOPES = " ".join(SCOPES_LIST)
+
+# Mapping between class `` and the columns in the sync log CSV files
+COLUMN_MAPPING = {
+    "apple_info.name": "Apple Song Name",
+    "apple_info.artist": "Apple Artist",
+    "apple_info.album": "Apple Album",
+    "spotify_info.name": "Spotify Song Name",
+    "spotify_info.artist": "Spotify Artist",
+    "spotify_info.album": "Spotify Album",
+    "spotify_info.track_id": "Spotify Track ID",
+    "similarity.total_similarity": "Match Score",
+    "similarity.song_name_similarity": "Song Match Score",
+    "similarity.artist_name_similarity": "Artist Match Score",
+    "similarity.album_name_similarity": "Album Match Score",
+}
