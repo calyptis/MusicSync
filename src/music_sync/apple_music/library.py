@@ -50,6 +50,7 @@ def parse_apple_music_library(
     song_list = library.find("dict")
     # Each song has first an ID entry <key> and then its info <dict>
     songs = song_list.findall("dict")
+    print(type(songs[0]))
     # Load songs into a dataframe
     df_songs = pd.DataFrame(list(map(get_entry, songs)))
     # Get correct dtypes
@@ -86,40 +87,70 @@ def parse_apple_music_library(
     return df_songs, dict_playlist
 
 
-def write_apple_music_library(
-    in_file: str = APPLE_MUSIC_LIBRARY_FILE,
-    out_playlist_file: str = RAW_PLAYLIST_FILE,
-    out_song_file: str = SONG_FILE,
+def save_apple_music_library(
+    xml_library_file: str = APPLE_MUSIC_LIBRARY_FILE,
+    playlists_file: str = RAW_PLAYLIST_FILE,
+    songs_file: str = SONG_FILE,
 ):
     """
-    Parses Apply Music Library file and writes output to disk.
+    Write Apple Music Library Data to Specified Files
 
-    Returns
-    -------
-        Writes output to file.
+    This function parses an Apple Music library XML file and outputs playlists and songs to
+    separate files. Songs are stored in CSV format, while playlists are serialized into JSON format.
+
+    Parameters
+    ----------
+    xml_library_file : str
+        The file path of the Apple Music library in XML format. Defaults to the
+        constant `APPLE_MUSIC_LIBRARY_FILE`.
+    playlists_file : str
+        The target file path for saving playlists in JSON format. Defaults to
+        the constant `RAW_PLAYLIST_FILE`.
+    songs_file : str
+        The target file path for saving songs in CSV format. Defaults to the
+        constant `SONG_FILE`.
+
     """
-    songs, playlists = parse_apple_music_library(in_file)
-    songs.to_csv(out_song_file, index=False)
-    json.dump(playlists, open(out_playlist_file, "w"))
+    songs, playlists = parse_apple_music_library(xml_library_file)
+    logging.info(f"Number of songs: {len(songs):,}")
+    logging.info(f"Number of playlists: {len(playlists):,}")
+    songs.to_csv(songs_file, index=False)
+    json.dump(playlists, open(playlists_file, "w"))
 
 
-def prepare_playlists(
-    in_song_file: str = SONG_FILE,
-    in_playlist_file: str = RAW_PLAYLIST_FILE,
-    out_playlist_file: str = PREPARED_PLAYLIST_FILE,
+def prepare_playlists_for_syncing(
+    songs_file: str = SONG_FILE,
+    raw_playlists_file: str = RAW_PLAYLIST_FILE,
+    parsed_playlists_file: str = PREPARED_PLAYLIST_FILE,
 ):
     """
-    Transforms the raw playlist file into a playlist file that contains
-    a song's name, artist and album.
-    This information is then used to create a query to Spotify's API when syncing playlists.
+    Prepare playlists by parsing raw playlist data and mapping it to metadata from available songs.
 
-    Returns
-    -------
+    The function reads in a file with song metadata and a file containing raw playlist data.
+    It filters out invalid songs based on their Track IDs, matches playlist data with valid
+    songs, and converts playlist entries into tuples of song name, artist, and album.
+    The processed playlists are then saved to a new file.
+
+    Parameters
+    ----------
+    songs_file : str
+        Path to the CSV file containing information about available songs. The file
+        must have the following columns: Track ID, Name, Artist, Album, and others.
+
+    raw_playlists_file : str
+        Path to the JSON file containing raw playlist data. The file contains a
+        mapping from playlist names to lists of song Track IDs.
+
+    parsed_playlists_file : str
+        Path where the processed playlists should be saved as a JSON file. The file
+        will contain a mapping from playlist names to lists of dictionaries. Each
+        dictionary represents a song with its name, artist, and album fields.
+
     """
     apple_music_songs = pd.read_csv(
-        in_song_file, usecols=[0, 1, 2, 3, 4, 5, 6]
+        songs_file, usecols=[0, 1, 2, 3, 4, 5, 6]
     ).set_index("Track ID")
-    apple_music_playlists = json.load(open(in_playlist_file, "rb"))
+    apple_music_playlists = json.load(open(raw_playlists_file, "rb"))
 
     # Check for invalid Track IDs
     mask_valid = (
@@ -146,4 +177,4 @@ def prepare_playlists(
         for k, v in apple_music_playlists.items()
     }
 
-    json.dump(parsed_playlists, open(out_playlist_file, "w"))
+    json.dump(parsed_playlists, open(parsed_playlists_file, "w"))

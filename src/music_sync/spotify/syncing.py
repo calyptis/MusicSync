@@ -1,21 +1,16 @@
-import re
 import logging
-import requests
 import pathlib
 
-import numpy as np
 import pandas as pd
 import spotipy
 
-from music_sync.spotify.similarity import measure_query_similarity
 from music_sync.spotify.utils import (
     get_chunks,
-    timeout_wrapper,
-    generate_additional_attempts,
     get_songs_to_sync,
 )
 from music_sync.classes import Song
 from music_sync.config import LOG_DIR
+from music_sync.spotify.matching import get_best_match
 
 
 logging.basicConfig(
@@ -48,13 +43,11 @@ def get_playlist_tracks(sp: spotipy.Spotify, playlist_id: str) -> list:
     playlist_tracks = []
     offset = 0
     while True:
-        response = timeout_wrapper(
-            sp.playlist_items(
-                playlist_id,
-                offset=offset,
-                fields="items.track.id,items.track.artists.id",
-                additional_types=["track"],
-            )
+        response = sp.playlist_items(
+            playlist_id,
+            offset=offset,
+            fields="items.track.id,items.track.artists.id",
+            additional_types=["track"],
         )
         if not response.get("items"):
             break

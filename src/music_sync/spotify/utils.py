@@ -1,6 +1,7 @@
 import logging
 import json
 import time
+from typing import Generator, List
 
 from requests.exceptions import ReadTimeout
 import re
@@ -38,7 +39,7 @@ def clean_string(x: str) -> str:
     return x.lower().strip()
 
 
-def get_chunks(original_list: list, n: int) -> list:
+def get_chunks(original_list: list, n: int) -> Generator[List]:
     """
     Yield successive n-sized chunks from list.
 
@@ -103,7 +104,7 @@ def timeout_wrapper(api_call, n_retries: int = 5, backoff_factor: float = 0.8):
     return None
 
 
-def generate_additional_attempts(song: Song) -> list[Song]:
+def generate_alternate_queries(song: Song) -> list[Song]:
     """
     Generates alternative query attempts for better Spotify matching.
 
@@ -186,6 +187,23 @@ def get_spotipy_instance() -> spotipy.Spotify:
 def get_songs_to_sync(
     filepath: str, playlist_songs: list[Song]
 ) -> tuple[list[Song], bool]:
+    """
+    Compares the songs in a playlist with a synced log file to identify songs that need syncing.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the log file containing songs already synced.
+    playlist_songs : list[Song]
+        List of Song objects representing the songs currently in the playlist.
+
+    Returns
+    -------
+    tuple[list[Song], bool]
+        A tuple containing:
+        - List of Song objects that need to be synced.
+        - Boolean indicating whether the playlist has already been synced prior.
+    """
     flag_already_synced = os.path.exists(filepath)
     songs_to_sync = playlist_songs
 

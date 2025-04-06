@@ -1,28 +1,31 @@
 """Define match."""
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional
 
 
 class Song(BaseModel):
     """Song information."""
 
-    name: str
-    artist: str
-    album: str
+    name: Optional[str] = None
+    artist: Optional[str] = None
+    album: Optional[str] = None
     track_id: Optional[str] = None
 
     class Config:
         # Make the instance hashable
         frozen = True
 
+    def __repr__(self):
+        return f"{self.name} {self.artist} {self.album}".strip()
+
 
 class Similarity(BaseModel):
     """Song similarity scores."""
 
-    total_similarity: float
-    song_name_similarity: float
-    artist_name_similarity: float
-    album_name_similarity: Optional[float]
+    total_similarity: Optional[float] = None
+    song_name_similarity: Optional[float] = None
+    artist_name_similarity: Optional[float] = None
+    album_name_similarity: Optional[float] = None
 
 
 class SongMatch(BaseModel):
@@ -30,4 +33,4 @@ class SongMatch(BaseModel):
 
     apple_info: Song
     spotify_info: Song
-    similarity: Optional[Similarity]
+    similarity: Similarity

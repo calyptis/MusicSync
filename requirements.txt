@@ -13,3 +13,5 @@ spotipy==2.23.0
 flask~=2.2.5
 werkzeug~=2.2.3
 pydantic~=2.11.2
+
+click~=8.1.7

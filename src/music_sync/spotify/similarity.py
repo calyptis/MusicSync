@@ -26,7 +26,7 @@ def similarity_func(a: str, b: str) -> float:
     return score
 
 
-def measure_query_similarity(song_to_match: Song, match: Song) -> Similarity:
+def measure_similarity(song_to_match: Song, match: Song) -> Similarity:
     """
     Calculates string similarity matches between the original query and a match returned by the API.
     Final similarity is based on individual similarities of song, artist and album (if available).
