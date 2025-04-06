@@ -1,13 +1,13 @@
 import logging
 import json
 import time
-from typing import Generator, List
-
+from typing import Generator
 from requests.exceptions import ReadTimeout
 import re
 import os
 
 import pandas as pd
+import numpy as np
 from spotipy.oauth2 import SpotifyOAuth
 import spotipy
 from spotipy.exceptions import SpotifyException
@@ -39,7 +39,7 @@ def clean_string(x: str) -> str:
     return x.lower().strip()
 
 
-def get_chunks(original_list: list, n: int) -> Generator[List]:
+def get_chunks(original_list: list, n: int) -> Generator[list, None, None]:
     """
     Yield successive n-sized chunks from list.
 
@@ -215,7 +215,9 @@ def get_songs_to_sync(
         ]
         # Rename columns to easily create Song instance
         tracks_already_synced.columns = ["name", "artist", "album"]
-        tracks_already_synced = tracks_already_synced.to_dict(orient="records")
+        tracks_already_synced = tracks_already_synced.replace(
+            [np.nan, pd.NA], None
+        ).to_dict(orient="records")
         # Create song instances
         tracks_already_synced = [Song(**i) for i in tracks_already_synced]
         # Identify songs not yet synced
