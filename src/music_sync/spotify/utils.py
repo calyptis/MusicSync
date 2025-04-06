@@ -1,6 +1,7 @@
 import logging
 import json
 import time
+
 from requests.exceptions import ReadTimeout
 import re
 import os
@@ -8,7 +9,9 @@ import os
 import pandas as pd
 from spotipy.oauth2 import SpotifyOAuth
 import spotipy
+from spotipy.exceptions import SpotifyException
 
+from music_sync.classes import Song
 from music_sync.config import CREDENTIALS_PATH, SCOPES
 
 
@@ -69,59 +72,93 @@ def get_credentials(credentials_path: str = CREDENTIALS_PATH) -> dict:
     return json.load(open(credentials_path, "rb"))
 
 
-def timeout_wrapper(api_call, n_retries: int = 5):
+def timeout_wrapper(api_call, n_retries: int = 5, backoff_factor: float = 0.8):
     """
-    Retries an API call n times to deal with timeout issues.
-    After each retry, a certain amount of time is waited.
+    Retries an API call multiple times to handle transient timeouts or network errors.
 
     Parameters
     ----------
-    api_call
-        Function to be called
-    n_retries
-        How often the API call should be retried
+    api_call : Callable
+        A lambda or function reference that makes an API call.
+    n_retries : int
+        Maximum number of retries before giving up.
+    backoff_factor : float
+        Time (in seconds) to wait between retries, multiplied by attempt count.
 
     Returns
     -------
-    Return object of API call
+    Any
+        Result of the API call if successful, else None.
     """
-    count = 0
-    while n_retries > count:
-        count += 1
+    for attempt in range(1, n_retries + 1):
         try:
-            return api_call
-        except TimeoutError | ReadTimeout:
-            time.sleep(0.8 * count)
+            return api_call()
+        except (TimeoutError, ReadTimeout, SpotifyException) as e:
+            logging.warning(f"Timeout on attempt {attempt}/{n_retries}: {e}")
+            time.sleep(backoff_factor * attempt)
+        except Exception as e:
+            logging.error(f"Non-timeout exception during API call: {e}")
+            break
+    logging.error("API call failed after maximum retries.")
     return None
 
 
-def generate_additional_attempts(song_name: str, artist_name: str, album_name: str):
+def generate_additional_attempts(song: Song) -> list[Song]:
+    """
+    Generates alternative query attempts for better Spotify matching.
+
+    Handles cases like:
+    - "feat." or "ft." in song titles
+    - "remastered" in song titles
+    - Collaboration names with "&"
+
+    Parameters
+    ----------
+    song: Song :
+        Song instance for which alternative variations should be generated.
+
+    Returns
+    -------
+    attempts: list[Song] :
+        Alternative song variations.
+    """
     attempts = []
+
+    def add_attempts(s_name, a_name, alb_name):
+        """Helper to add standard + no-album versions of a query."""
+        attempts.append(
+            Song(name=s_name.strip(), artist=a_name.strip(), album=alb_name.strip())
+        )
+        attempts.append(Song(name=s_name.strip(), artist=a_name.strip(), album=""))
+
     # Sometimes there is no match if song includes "feat." or "ft."
-    if "feat." in song_name or "ft." in song_name:
-        # Replace feat in song name
-        song_name_clean = song_name.replace("feat. ", " ").replace("ft. ", " ")
-        attempts += [(song_name_clean, artist_name, album_name)]
-        attempts += [(song_name_clean, artist_name, "")]
-        # Get first part of song name, before feat
+    if "feat." in song.name.lower() or "ft." in song.name.lower():
+        cleaned_name = re.sub(
+            r"\s*\(?\b(?:feat\.|ft\.)\b.*", "", song.name, flags=re.IGNORECASE
+        ).strip()
+        no_feat_name = song.name.replace("feat. ", " ").replace("ft. ", " ")
         song_name_clean_first_collab = re.split(
-            r"(\s?\(?feat\.)|(\s?\(?ft\.)", song_name
+            r"(\s?\(?feat\.)|(\s?\(?ft\.)", song.name
         )[0].strip()
-        attempts += [(song_name_clean_first_collab, artist_name, album_name)]
-        attempts += [(song_name_clean_first_collab, artist_name, "")]
+        add_attempts(song_name_clean_first_collab, song.artist, song.album)
+        add_attempts(no_feat_name, song.artist, song.album)
+        add_attempts(cleaned_name, song.artist, song.album)
+
     # Sometimes there is no match if song includes "remastered"
-    if "remastered" in song_name:
-        song_name_clean = re.sub(r"(\s?remastered\s?)", " ", song_name).strip()
-        attempts += [(song_name_clean, artist_name, album_name)]
-        attempts += [(song_name_clean, artist_name, "")]
+    if "remastered" in song.name.lower():
+        cleaned_name = re.sub(
+            r"\s*\(?remastered[^\)]*\)?", "", song.name, flags=re.IGNORECASE
+        ).strip()
+        add_attempts(cleaned_name, song.artist, song.album)
+
     # Sometimes there is no match if artist is collaboration and includes "&", like Brian Eno & John Cale
-    if "&" in artist_name:
-        artist_name_clean = artist_name.split("&")[0]
-        attempts += [(song_name, artist_name_clean, album_name)]
-        attempts += [(song_name, artist_name_clean, "")]
-        # Sometimes it helps to replace & with a comma
-        attempts += [(song_name, artist_name.replace(" & ", ", "), album_name)]
-        attempts += [(song_name, artist_name.replace(" & ", ", "), "")]
+    if "&" in song.artist:
+        # Try only the first artist
+        main_artist = song.artist.split("&")[0]
+        add_attempts(song.name, main_artist, song.album)
+        # Try replacing '&' with a comma
+        artist_with_comma = song.artist.replace(" & ", ", ")
+        add_attempts(song.name, artist_with_comma, song.album)
 
     return attempts
 
@@ -147,20 +184,23 @@ def get_spotipy_instance() -> spotipy.Spotify:
 
 
 def get_songs_to_sync(
-    filepath: str, playlist_songs: list[tuple]
-) -> tuple[list[tuple], bool]:
+    filepath: str, playlist_songs: list[Song]
+) -> tuple[list[Song], bool]:
     flag_already_synced = os.path.exists(filepath)
     songs_to_sync = playlist_songs
 
     if flag_already_synced:
         logging.info("Playlist was already synced once before")
         df_logs = pd.read_csv(filepath)
-        tracks_already_synced = df_logs.apply(
-            lambda row: tuple(row[["Apple Song Name", "Apple Artist", "Apple Album"]]),
-            axis=1,
-        ).tolist()
-        songs_to_sync = list(
-            set([tuple(i) for i in playlist_songs]) - set(tracks_already_synced)
-        )
+        tracks_already_synced = df_logs[
+            ["Apple Song Name", "Apple Artist", "Apple Album"]
+        ]
+        # Rename columns to easily create Song instance
+        tracks_already_synced.columns = ["name", "artist", "album"]
+        tracks_already_synced = tracks_already_synced.to_dict(orient="records")
+        # Create song instances
+        tracks_already_synced = [Song(**i) for i in tracks_already_synced]
+        # Identify songs not yet synced
+        songs_to_sync = list(set(songs_to_sync) - set(tracks_already_synced))
 
     return songs_to_sync, flag_already_synced

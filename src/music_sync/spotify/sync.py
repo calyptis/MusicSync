@@ -1,19 +1,21 @@
+import re
+import logging
+import requests
+import pathlib
+
 import numpy as np
 import pandas as pd
+import spotipy
+
+from music_sync.spotify.similarity import measure_query_similarity
 from music_sync.spotify.utils import (
     get_chunks,
-    clean_string,
     timeout_wrapper,
     generate_additional_attempts,
     get_songs_to_sync,
 )
+from music_sync.classes import Song
 from music_sync.config import LOG_DIR
-import difflib
-import re
-import spotipy
-import logging
-import requests
-import pathlib
 
 
 logging.basicConfig(
@@ -26,139 +28,6 @@ logging.basicConfig(
 # TODO: Create one main database that contains all synced songs.
 #       Whenever a new playlist needs to be synced, look up any songs that are already
 #       in this database. This will save some API calls.
-
-
-def measure_query_similarity(query: tuple, match: tuple) -> tuple:
-    """
-    Calculates string similarity matches between the original query and a match returned by the API.
-    Final similarity is based on individual similarities of song, artist and album (if available).
-    Song similarity has a larger weight.
-
-    Parameters
-    ----------
-    query
-        Tuple of (song_name, artist_name, album_name) of original song
-    match
-        Tuple of (song_name, artist_name, album_name) of matched Spotify song
-    Returns
-    -------
-    similarities
-        Tuple of similarities for (aggregate, song, artist, album)
-    """
-    song_name_similarity = difflib.SequenceMatcher(
-        None, query[0], clean_string(match[0])
-    ).ratio()
-    artist_name_similarity = difflib.SequenceMatcher(
-        None, query[1], clean_string(match[1])
-    ).ratio()
-    album_name_similarity = difflib.SequenceMatcher(
-        None, query[2], clean_string(match[2])
-    ).ratio()
-    if query[2] == "":
-        album_name_similarity = None
-    similarities = np.array(
-        [song_name_similarity, artist_name_similarity, album_name_similarity]
-    )
-    # Getting the song right is slightly more important
-    w = np.array([0.4, 0.3, 0.3])
-    ww = np.array(
-        [0.6, 0.5]
-    )  # In case no album was provided, exclude it from aggregate similarity
-    if query[2] == "":
-        total_similarity = sum(similarities[:-1] * ww)
-    else:
-        total_similarity = sum(similarities * w)
-    similarities = (
-        total_similarity,
-        song_name_similarity,
-        artist_name_similarity,
-        album_name_similarity,
-    )
-    return similarities
-
-
-def evaluate_matches(
-    tracks: list, song_name: str, artist_name: str, album_name: str
-) -> list:
-    """
-    Calculates similarities between the original query and all returned matches.
-    These similarities are at a later stage used to identify the best match.
-
-    Parameters
-    ----------
-    tracks
-        All results from the API search request
-    song_name
-        Original song name
-    artist_name
-        Original artist name
-    album_name
-        Original album name
-
-    Returns
-    -------
-    matched_items
-        List of tuples containing similarity metrics as returned by query_similarity
-    """
-    matched_items = [
-        measure_query_similarity(
-            (song_name, artist_name, album_name),
-            (
-                str(item.get("name", "")),
-                " ".join([str(i.get("name", "")) for i in item.get("artists")]),
-                str(item.get("album").get("name", "")),
-            ),
-        )
-        for item in tracks
-        if item is not None
-    ]
-    return matched_items
-
-
-def return_best_match(
-    tracks: list,
-    best_match_template: dict,
-    song_name: str,
-    artist_name: str,
-    album_name: str,
-) -> dict:
-    """
-    Returns the best match according to string similarities amongst the API results.
-
-    Parameters
-    ----------
-    tracks
-        All results from the API search request
-    best_match_template
-        Template of the structure of the best_match object
-        Contains all the information that will be written to disk in the form of the CSV log file
-        after a playlist was successfully synced.
-    song_name
-        Original song name
-    artist_name
-        Original artist name
-    album_name
-        Original album name
-
-    Returns
-    -------
-    best_match
-    """
-    best_match = best_match_template.copy()
-    matched_items = evaluate_matches(tracks, song_name, artist_name, album_name)
-    best_match_idx = np.argmax([i[0] for i in matched_items])
-    best_match_item = tracks[best_match_idx]
-    best_match["Spotify Song Name"] = best_match_item.get("name")
-    best_match["Spotify Artist"] = " ".join(
-        [i.get("name") for i in best_match_item.get("artists")]
-    )
-    best_match["Spotify Album"] = best_match_item.get("album").get("name")
-    best_match["Spotify Track ID"] = best_match_item.get("id")
-    best_match["Match Score"] = matched_items[best_match_idx][0]
-    best_match["Song Match Score"] = matched_items[best_match_idx][1]
-    best_match["Artist Match Score"] = matched_items[best_match_idx][2]
-    best_match["Album Match Score"] = matched_items[best_match_idx][-1]
-    return best_match
 
 
 def get_playlist_tracks(sp: spotipy.Spotify, playlist_id: str) -> list:
@@ -202,79 +71,10 @@ def get_playlist_tracks(sp: spotipy.Spotify, playlist_id: str) -> list:
     return playlist_tracks
 
 
-def get_best_match(
-    sp: spotipy.Spotify, song_name: str, artist_name: str, album_name: str
-) -> dict:
-    """
-    Returns the best Spotify song match for a given Apple Music song, if available.
-
-    Parameters
-    ----------
-    sp
-        Spotipy instance
-    song_name
-        Name of song to be looked up in Spotify
-    artist_name
-        Name of artist(s) of song to be looked up in Spotify
-    album_name
-        Name of album of song to be looked up in Spotify
-
-
-    Returns
-    -------
-    best_match : dict
-        Information on best match, including string similarity with original query information
-        All of this information will be written to the CSV log file after a playlist was successfully synced.
-    """
-
-    attempts = [(song_name, artist_name, album_name)]
-
-    # Sometimes there is no match if album name is included, e.g.
-    # bloody valentine	Machine Gun Kelly	bloody valentine - Single
-    attempts += [(song_name, artist_name, "")]
-    attempts += generate_additional_attempts(song_name, artist_name, album_name)
-
-    best_match_template = {
-        "Apple Song Name": song_name,
-        "Apple Artist": artist_name,
-        "Apple Album": album_name,
-        "Spotify Song Name": None,
-        "Spotify Artist": None,
-        "Spotify Track ID": None,
-        "Match Score": None,
-        "Song Match Score": None,
-        "Artist Match Score": None,
-        "Album Match Score": None,
-    }
-
-    attempts_best_matches = []
-    for attempt in attempts:
-        query = " ".join([str(i) for i in attempt])
-        query = re.sub(r"\s+", " ", query).strip()
-        try:
-            tracks = timeout_wrapper(sp.search(query, limit=15)).get("tracks")
-        # except spotipy.exceptions.SpotifyException or requests.exceptions.ReadTimeout:
-        except requests.exceptions.ReadTimeout:
-            tracks = None
-        if tracks is not None and len(tracks.get("items")) > 0:
-            items = tracks.get("items")
-            attempts_best_matches += [
-                return_best_match(items, best_match_template.copy(), *attempt)
-            ]
-
-    if attempts_best_matches:
-        # Find best match across all the attempts
-        scores = [i["Match Score"] for i in attempts_best_matches]
-        optimal = np.argmax(scores)
-        return attempts_best_matches[optimal]
-    else:
-        return best_match_template
-
-
 def sync_playlist(
     sp: spotipy.Spotify,
     playlist_name: str,
-    playlist_songs: list[tuple],
+    playlist_songs: list[dict[str, str]],
     log_path: pathlib.Path = LOG_DIR,
 ):
     """
@@ -304,7 +104,10 @@ def sync_playlist(
     filename = "".join(e for e in playlist_name if e.isalnum())
     filepath = log_path / f"{filename}.csv"
 
-    songs_to_sync, flag_already_synced = get_songs_to_sync(filepath, playlist_songs)
+    playlist_songs = [Song(**i) for i in playlist_songs]
+    songs_to_sync, flag_already_synced = get_songs_to_sync(
+        str(filepath), playlist_songs
+    )
 
     logging.info("Need to sync {0} new songs".format(len(songs_to_sync)))
 
@@ -338,9 +141,9 @@ def sync_playlist(
     update_frequency = 50
     count = 0
     matched_songs = []
-    for song_name, song_artist, album_name in songs_to_sync:
+    for song in songs_to_sync:
         count += 1
-        matched_songs += [get_best_match(sp, song_name, song_artist, album_name)]
+        matched_songs += [get_best_match(sp, song)]
         if count % update_frequency == 0:
             logging.info(f"Synced {count} out of {len(songs_to_sync)} songs")
 

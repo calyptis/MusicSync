@@ -130,6 +130,8 @@ def prepare_playlists(
     logging.info(f"Number of invalid track IDs: {mask_invalid.sum():,}")
     valid_songs = set(apple_music_songs.index.tolist())
 
+    apple_music_songs.columns = apple_music_songs.columns.str.lower()
+
     # Convert Track IDs in playlist file to tuples of Name, Artist, Album
     # Since we can sync only based on that information
     parsed_playlists = {
@@ -138,10 +140,8 @@ def prepare_playlists(
                 # Intersection makes sure we only index valid songs
                 # in case some songs are in playlists but not in the library
                 # Perhaps for Apple Music managed playlists.
-                list(set(v).intersection(valid_songs)), ["Name", "Artist", "Album"]
-            ]
-            .apply(tuple, axis=1)
-            .values
+                list(set(v).intersection(valid_songs)), ["name", "artist", "album"]
+            ].to_dict(orient="records")
         )
         for k, v in apple_music_playlists.items()
     }
