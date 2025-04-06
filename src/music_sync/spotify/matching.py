@@ -6,7 +6,7 @@ import numpy as np
 
 from music_sync.classes import Song, SongMatch, Similarity
 from music_sync.spotify.similarity import measure_similarity
-from music_sync.spotify.utils import generate_alternate_queries
+from music_sync.spotify.utils import generate_alternate_queries, timeout_wrapper
 
 
 def get_best_match(sp: spotipy.Spotify, song: Song) -> SongMatch:
@@ -39,7 +39,7 @@ def get_best_match(sp: spotipy.Spotify, song: Song) -> SongMatch:
         query = " ".join([i.__repr__() for i in attempt])
         query = re.sub(r"\s+", " ", query).strip()
         try:
-            tracks = sp.search(query, limit=15).get("tracks")
+            tracks = timeout_wrapper(lambda: sp.search(query, limit=15).get("tracks"))
         except (spotipy.exceptions.SpotifyException, requests.exceptions.ReadTimeout):
             tracks = None
         if tracks is not None and len(tracks.get("items")) > 0:
