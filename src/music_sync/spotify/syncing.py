@@ -9,7 +9,7 @@ from music_sync.spotify.utils import (
     get_songs_to_sync,
 )
 from music_sync.classes import Song
-from music_sync.config import LOG_DIR
+from music_sync.config import LOG_DIR, COLUMN_MAPPING
 from music_sync.spotify.matching import get_best_match
 
 
@@ -126,7 +126,7 @@ def sync_playlist(
         playlist_id = d_existing_playlists[playlist_name]
         tracks = get_playlist_tracks(sp, playlist_id)
         logging.info(
-            f"Spotify playlist already exists and contained {len(tracks)} songs"
+            f"Spotify playlist already exists and contains {len(tracks)} songs"
         )
 
     logging.info(f"Starting to sync {len(songs_to_sync)} songs")
@@ -141,7 +141,11 @@ def sync_playlist(
             logging.info(f"Synced {count} out of {len(songs_to_sync)} songs")
 
     if matched_songs:
-        matched_songs = pd.DataFrame(list(matched_songs))
+        matched_songs = [pd.json_normalize(i.model_dump()) for i in matched_songs]
+        matched_songs = pd.concat(matched_songs)
+        # Make sure columns correspond to original names
+        matched_songs.drop(columns=["apple_info.track_id"], inplace=True)
+        matched_songs.rename(columns=COLUMN_MAPPING, inplace=True)
         matched_songs.to_csv(
             filepath,
             index=False,
