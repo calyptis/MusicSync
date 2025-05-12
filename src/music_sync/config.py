@@ -7,6 +7,7 @@ MAIN_DIR = pathlib.Path(
 )
 DATA_DIR = MAIN_DIR / "data"
 LOG_DIR = DATA_DIR / "sync_logs"
+LOG_FILE = LOG_DIR / "database.json"
 APPLE_MUSIC_DIR = DATA_DIR / "apple_music"
 CREDENTIALS_PATH = MAIN_DIR / "credentials" / "credentials.json"
 ALLOWED_EXTENSIONS = {"xml"}
