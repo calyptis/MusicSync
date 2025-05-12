@@ -1,6 +1,5 @@
-import difflib
-
 import numpy as np
+from rapidfuzz import fuzz
 
 from music_sync.spotify.utils import clean_string
 from music_sync.classes import Song, Similarity
@@ -8,7 +7,7 @@ from music_sync.classes import Song, Similarity
 
 def similarity_func(a: str, b: str) -> float:
     """
-    Measure the similarity between two strings.
+    Measure the similarity between two strings using rapidfuzz.
 
     Parameters
     ----------
@@ -20,9 +19,9 @@ def similarity_func(a: str, b: str) -> float:
     Returns
     -------
     score: float :
-        Similarity score.
+        Similarity score [0, 1].
     """
-    score = difflib.SequenceMatcher(None, a, b).ratio()
+    score = round(fuzz.ratio(a, b) / 100, 2)
     return score
 
 
@@ -38,20 +37,23 @@ def measure_similarity(song_to_match: Song, match: Song) -> Similarity:
         Song instance of original song to match.
     match: Song:
         Song instance of matched Spotify song.
+
     Returns
     -------
     similarities
         Tuple of similarities for (aggregate, song, artist, album)
     """
     # Song similarity
-    song_name_similarity = similarity_func(song_to_match.name, clean_string(match.name))
+    song_name_similarity = similarity_func(
+        clean_string(song_to_match.name), clean_string(match.name)
+    )
     # Artist similarity
     artist_name_similarity = similarity_func(
-        song_to_match.artist, clean_string(match.artist)
+        clean_string(song_to_match.artist), clean_string(match.artist)
     )
     # Album similarity
     album_name_similarity = similarity_func(
-        song_to_match.album, clean_string(match.album)
+        clean_string(song_to_match.album), clean_string(match.album)
     )
     # The three types of similarities
     similarities = np.array(
@@ -62,7 +64,7 @@ def measure_similarity(song_to_match: Song, match: Song) -> Similarity:
     # Getting the song right is slightly more important
     w = np.array([0.4, 0.3, 0.3])
     # In case no album was provided, exclude it from aggregate similarity
-    ww = np.array([0.6, 0.5])
+    ww = np.array([0.6, 0.4])
     # If no album name => ignore its similarity
     if song_to_match.album == "":
         total_similarity = sum(similarities[:-1] * ww)
