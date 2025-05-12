@@ -110,5 +110,9 @@ python -m music_sync.apple_music.main
 python -m music_sync.spotify.main --name "Apple Music Playlist Name"
 ```
 
+# Notes
+- Syncing a playlist only **adds** songs
+  - Songs removed in the Apple Music playlist **will not** be **removed** from the Spotify playlist after syncing.
+
 # Related projects
 - https://soundiiz.com
