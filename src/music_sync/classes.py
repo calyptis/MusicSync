@@ -1,6 +1,6 @@
 """Define match."""
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Union
 
 
 class Song(BaseModel):
@@ -9,7 +9,7 @@ class Song(BaseModel):
     name: Optional[str] = None
     artist: Optional[str] = None
     album: Optional[str] = None
-    track_id: Optional[str] = None
+    track_id: Optional[Union[str, int]] = None
 
     class Config:
         # Make the instance hashable
