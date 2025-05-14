@@ -50,7 +50,6 @@ def parse_apple_music_library(
     song_list = library.find("dict")
     # Each song has first an ID entry <key> and then its info <dict>
     songs = song_list.findall("dict")
-    print(type(songs[0]))
     # Load songs into a dataframe
     df_songs = pd.DataFrame(list(map(get_entry, songs)))
     # Get correct dtypes
@@ -147,9 +146,11 @@ def prepare_playlists_for_syncing(
         dictionary represents a song with its name, artist, and album fields.
 
     """
-    apple_music_songs = pd.read_csv(
-        songs_file, usecols=[0, 1, 2, 3, 4, 5, 6]
-    ).set_index("Track ID")
+    apple_music_songs = pd.read_csv(songs_file, usecols=[0, 1, 2, 3, 4, 5, 6])
+    apple_music_songs.columns = apple_music_songs.columns.str.lower().str.replace(
+        " ", "_"
+    )
+    apple_music_songs.set_index("track_id", inplace=True)
     apple_music_playlists = json.load(open(raw_playlists_file, "rb"))
 
     # Check for invalid Track IDs
@@ -161,8 +162,6 @@ def prepare_playlists_for_syncing(
     logging.info(f"Number of invalid track IDs: {mask_invalid.sum():,}")
     valid_songs = set(apple_music_songs.index.tolist())
 
-    apple_music_songs.columns = apple_music_songs.columns.str.lower()
-
     # Convert Track IDs in playlist file to tuples of Name, Artist, Album
     # Since we can sync only based on that information
     parsed_playlists = {
@@ -172,7 +171,11 @@ def prepare_playlists_for_syncing(
                 # in case some songs are in playlists but not in the library
                 # Perhaps for Apple Music managed playlists.
                 list(set(v).intersection(valid_songs)), ["name", "artist", "album"]
-            ].to_dict(orient="records")
+            ]
+            # Keep track ID
+            .reset_index()
+            # Save as dictionaries to easily create Song instances
+            .to_dict(orient="records")
         )
         for k, v in apple_music_playlists.items()
     }
