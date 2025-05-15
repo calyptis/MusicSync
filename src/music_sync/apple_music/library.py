@@ -183,4 +183,6 @@ def prepare_playlists_for_syncing(
         for k, v in apple_music_playlists.items()
     }
 
-    json.dump(parsed_playlists, open(parsed_playlists_file, "w"))
+    with open(parsed_playlists_file, "w") as f:
+        # noinspection PyTypeChecker
+        json.dump(parsed_playlists, f)
