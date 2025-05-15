@@ -15,3 +15,5 @@ werkzeug~=2.2.3
 pydantic~=2.11.2
 
 click~=8.1.7
+
+rapidfuzz~=3.13.0
