@@ -1,11 +1,19 @@
-import argparse
+import click
 import json
 
 from music_sync.apple_music.config import PREPARED_PLAYLIST_FILE
-from music_sync.spotify.sync import sync_playlist
+from music_sync.spotify.syncing import sync_playlist
 from music_sync.spotify.utils import get_spotipy_instance
 
 
+@click.command()
+@click.option(
+    "--name",
+    "playlist_name",
+    required=True,
+    type=str,
+    help="Name of the playlist to sync.",
+)
 def main(playlist_name: str):
     playlists = json.load(open(PREPARED_PLAYLIST_FILE, "r"))
     sp_instance = get_spotipy_instance()
@@ -16,9 +24,4 @@ def main(playlist_name: str):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    # noinspection PyTypeChecker
-    parser.add_argument("--name", type=str, nargs=None)
-    args = parser.parse_args()
-    chosen_playlist_name = args.name
-    main(chosen_playlist_name)
+    main()

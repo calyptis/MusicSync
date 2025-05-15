@@ -11,9 +11,9 @@ To sync your entire library, create a playlist that holds all your songs.
 - Provides detailed reports on the syncing effectiveness by logging song matches and their associated similarity scores.
   See example below:
 
-| Apple Song Name   | Apple Artist     | Apple Album            | Spotify Song Name   | Spotify Artist   | Spotify Album   | Spotify Track ID       |   Match Score |   Song Match Score | Artist Match Score | Album Match Score |
-|:------------------|:-----------------|:-----------------------|:--------------------|:-----------------|:----------------|:-----------------------|--------------:|-------------------:|-------------------:|------------------:|
-| Caruso            | Fiorella Mannoia | A te (Special Edition) | Caruso              | Fiorella Mannoia | A te            | 2kWftUZ8PxLQtRvrHX3cIe |          0.93 |               0.83 |               0.88 |               0.2 |
+| Apple Song Name   | Apple Artist     | Apple Album            | Spotify Song Name   | Spotify Artist   | Spotify Album   | Spotify Track ID       | Total Similarity | Song Similarity | Artist Similarity | Album Similarity |
+|:------------------|:-----------------|:-----------------------|:--------------------|:-----------------|:----------------|:-----------------------|-----------------:|----------------:|------------------:|-----------------:|
+| Caruso            | Fiorella Mannoia | A te (Special Edition) | Caruso              | Fiorella Mannoia | A te            | 2kWftUZ8PxLQtRvrHX3cIe |             0.68 |            0.83 |              0.88 |              0.3 |
 
 - Successfully matches various edge cases, such as artist collaborations (e.g. `&` in artist name or `feat.` in song name)
 
@@ -74,10 +74,9 @@ The file has the following structure:
 
 ```python
 {
-	"client_id": "{your_client_id}",
-	"client_secret": "{you_client_secret}",
+	"client_id": "...",
+	"client_secret": "...",
 	"redirect_uri": "http://localhost:9000/callback/",
-	"redirect_flask_uri": "http://localhost:8090"
 }
 ```
 
@@ -110,6 +109,13 @@ python -m music_sync.apple_music.main
 ```bash
 python -m music_sync.spotify.main --name "Apple Music Playlist Name"
 ```
+
+# Notes
+- Syncing a playlist only **adds** songs
+  - Songs removed in the Apple Music playlist **will not** be **removed** from the Spotify playlist after syncing.
+
+# TODO:
+- [ ] Use cosine similarity of LLM embeddings to better evaluate match
 
 # Related projects
 - https://soundiiz.com
