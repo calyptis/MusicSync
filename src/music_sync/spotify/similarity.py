@@ -27,7 +27,7 @@ def similarity_func(a: str, b: str) -> float:
 
 def measure_similarity(song_to_match: Song, match: Song) -> Similarity:
     """
-    Calculates string similarity matches between the original query and a match returned by the API.
+    Calculate string similarity matches between the original query and a match returned by the API.
     Final similarity is based on individual similarities of song, artist and album (if available).
     Song similarity has a larger weight.
 
@@ -40,8 +40,8 @@ def measure_similarity(song_to_match: Song, match: Song) -> Similarity:
 
     Returns
     -------
-    similarities
-        Tuple of similarities for (aggregate, song, artist, album)
+    similarities: Similarity :
+        Similarities for (aggregate, song, artist, album)
     """
     # Song similarity
     song_similarity = similarity_func(
@@ -65,6 +65,7 @@ def measure_similarity(song_to_match: Song, match: Song) -> Similarity:
     ww = np.array([0.6, 0.4])
     # If no album name => ignore its similarity
     if song_to_match.album == "":
+        album_similarity = None
         total_similarity = sum(similarities[:-1] * ww)
     else:
         total_similarity = sum(similarities * w)

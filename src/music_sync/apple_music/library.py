@@ -24,7 +24,8 @@ def parse_apple_music_library(
     filename: str = APPLE_MUSIC_LIBRARY_FILE,
 ) -> tuple[pd.DataFrame, dict]:
     """
-    Parses Apple Music library, which is exported using File -> Library -> Export Library...
+    Parse Apple Music library, which is exported using File -> Library -> Export Library...
+
     It creates two objects, a dataframe containing all relevant information of all the songs in the library
     and a dictionary containing the track IDs for each playlist.
 

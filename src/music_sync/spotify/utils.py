@@ -22,7 +22,7 @@ logging.basicConfig(
 
 def clean_string(x: str) -> str:
     """
-    Strips space and transforms string into lowercase letters
+    Strip space and transforms string into lowercase letters
 
     Parameters
     ----------
@@ -72,7 +72,7 @@ def get_credentials(credentials_path: str = CREDENTIALS_PATH) -> dict:
 
 def timeout_wrapper(api_call, n_retries: int = 5, backoff_factor: float = 0.8):
     """
-    Retries an API call multiple times to handle transient timeouts or network errors.
+    Retry an API call multiple times to handle transient timeouts or network errors.
 
     Parameters
     ----------
@@ -103,7 +103,7 @@ def timeout_wrapper(api_call, n_retries: int = 5, backoff_factor: float = 0.8):
 
 def generate_alternate_queries(song: Song) -> list[Song]:
     """
-    Generates alternative query attempts for better Spotify matching.
+    Generate alternative query attempts for better Spotify matching.
 
     Handles cases like:
     - "feat." or "ft." in song titles
@@ -163,7 +163,7 @@ def generate_alternate_queries(song: Song) -> list[Song]:
 
 def get_spotipy_instance() -> spotipy.Spotify:
     """
-    Initiates the spotipy instance to allow API calls.
+    Initiate the spotipy instance to allow API calls.
 
     Returns
     -------
@@ -187,7 +187,7 @@ def get_songs_to_sync(
     playlist_name: str,
 ) -> [list[dict], dict[str, list[Song | str]]]:
     """
-    Compares the songs in a playlist with a synced log file to identify songs that need syncing.
+    Compare the songs in a playlist with a synced log file to identify songs that need syncing.
 
     Parameters
     ----------

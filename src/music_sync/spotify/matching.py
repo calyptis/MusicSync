@@ -11,7 +11,7 @@ from music_sync.spotify.utils import generate_alternate_queries, timeout_wrapper
 
 def get_best_match(sp: spotipy.Spotify, song: Song) -> SongMatch:
     """
-    Returns the best Spotify song match for a given Apple Music song, if available.
+    Return the best Spotify song match for a given Apple Music song, if available.
 
     Parameters
     ----------
@@ -63,7 +63,7 @@ def get_best_match(sp: spotipy.Spotify, song: Song) -> SongMatch:
 
 def find_best_match(tracks: list, song: Song) -> SongMatch:
     """
-    Identifies the best matching track from a list of tracks based on string similarity.
+    Identify the best matching track from a list of tracks based on string similarity.
 
     This function takes the search results (tracks) returned by the Spotify API
     and compares them with the provided song information. It calculates similarity
@@ -105,7 +105,7 @@ def find_best_match(tracks: list, song: Song) -> SongMatch:
 
 def evaluate_matches(tracks: list, song: Song) -> list[Similarity]:
     """
-    Calculates similarities between the original query and all returned matches.
+    Calculate similarities between the original query and all returned matches.
     These similarities are at a later stage used to identify the best match.
 
     Parameters

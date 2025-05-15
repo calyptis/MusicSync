@@ -51,8 +51,8 @@ def main(
     Main function for processing an Apple Music library and preparing playlists for syncing.
 
     This function performs two operations:
-    1. Parses and saves the Apple Music library into separate files for songs and playlists.
-    2. Prepares playlists by filtering and transforming raw playlist data based on song metadata.
+    1. Parse and save the Apple Music library into separate files for songs and playlists.
+    2. Prepare playlists by filtering and transforming raw playlist data based on song metadata.
 
     Parameters
     ----------
