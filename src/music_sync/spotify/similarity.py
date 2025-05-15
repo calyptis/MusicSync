@@ -44,21 +44,19 @@ def measure_similarity(song_to_match: Song, match: Song) -> Similarity:
         Tuple of similarities for (aggregate, song, artist, album)
     """
     # Song similarity
-    song_name_similarity = similarity_func(
+    song_similarity = similarity_func(
         clean_string(song_to_match.name), clean_string(match.name)
     )
     # Artist similarity
-    artist_name_similarity = similarity_func(
+    artist_similarity = similarity_func(
         clean_string(song_to_match.artist), clean_string(match.artist)
     )
     # Album similarity
-    album_name_similarity = similarity_func(
+    album_similarity = similarity_func(
         clean_string(song_to_match.album), clean_string(match.album)
     )
     # The three types of similarities
-    similarities = np.array(
-        [song_name_similarity, artist_name_similarity, album_name_similarity]
-    )
+    similarities = np.array([song_similarity, artist_similarity, album_similarity])
     # Setting the weight of each similarity
     # (song, artist, album)
     # Getting the song right is slightly more important
@@ -73,7 +71,7 @@ def measure_similarity(song_to_match: Song, match: Song) -> Similarity:
 
     return Similarity(
         total_similarity=total_similarity,
-        song_name_similarity=song_name_similarity,
-        artist_name_similarity=artist_name_similarity,
-        album_name_similarity=album_name_similarity,
+        song_similarity=song_similarity,
+        artist_similarity=artist_similarity,
+        album_similarity=album_similarity,
     )
