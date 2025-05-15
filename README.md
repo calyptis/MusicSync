@@ -5,6 +5,8 @@ This tool matches songs between platforms with precision and gives you **full co
 
 # 🚀 Features
 
+- Syncs only playlists
+   - To sync all your entire library, add it to a single playlist 
 - 100% local processing – no third-party servers involved.
 - Incremental syncing: tracks previously synced are tracked.
 - Detailed logging of sync results, including match scores.
@@ -40,7 +42,6 @@ These steps have been validated with the website's version as of 2021-01-17.
 ```commandline
 git clone git@github.com:calyptis/MusicSync.git
 cd MusicSync
-source prepare_env.sh
 ```
 
 ### 2.2 Install Dependencies
