@@ -130,6 +130,7 @@ def sync_playlist(
     else:
         playlist_id = d_existing_playlists[playlist_name]
         tracks = get_playlist_tracks(sp, playlist_id)
+        # noinspection PyTypeChecker
         logging.info(
             f"Spotify playlist already exists and contains {len(tracks)} songs"
         )
@@ -200,6 +201,8 @@ def sync_playlist(
             sp.playlist_add_items(playlist_id, chunk)
 
         # Save updated log data
-        json.dump(updated_log_data, open(filepath, "w"))
+        with open(filepath, "w") as f:
+            # noinspection PyTypeChecker
+            json.dump(updated_log_data, f)
 
     logging.info(f"Done with playlist {playlist_name}.\n")

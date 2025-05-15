@@ -4,10 +4,7 @@ import time
 from typing import Generator
 from requests.exceptions import ReadTimeout
 import re
-import os
 
-import pandas as pd
-import numpy as np
 from spotipy.oauth2 import SpotifyOAuth
 import spotipy
 from spotipy.exceptions import SpotifyException

@@ -114,7 +114,9 @@ def save_apple_music_library(
     logging.info(f"Number of songs: {len(songs):,}")
     logging.info(f"Number of playlists: {len(playlists):,}")
     songs.to_csv(songs_file, index=False)
-    json.dump(playlists, open(playlists_file, "w"))
+    with open(playlists_file, "w") as f:
+        # noinspection PyTypeChecker
+        json.dump(playlists, f)
 
 
 def prepare_playlists_for_syncing(
