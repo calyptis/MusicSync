@@ -95,6 +95,8 @@ replace your client ID and secret with the values obtained from step 4 in Sectio
 ```bash
 python -m music_sync.main
 ```
+- To exclude certain playlists, add them to the EXCLUDE_PLAYLIST_FILE.
+    - List one playlist per line.
 
 ### Syncs a specific playlist
 
