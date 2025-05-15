@@ -6,9 +6,9 @@ This tool matches songs between platforms with precision and gives you **full co
 # 🚀 Features
 
 - Syncs only playlists
-   - To sync all your entire library, add it to a single playlist 
+   - To sync all your entire library, add it to a single playlist
 - 100% local processing – no third-party servers involved.
-- Incremental syncing: tracks previously synced are tracked.
+- Incremental syncing: tracks previously synced songs.
 - Detailed logging of sync results, including match scores.
 - Handles edge cases like artist collaborations (`feat.`, `&`, etc.)
 
@@ -113,6 +113,7 @@ python -m music_sync.spotify.main --name "Apple Music Playlist Name"
 # ⚠️ Notes
 - Syncing only adds songs to Spotify playlists
 - Songs removed in Apple Music will not be removed from the Spotify playlist.
+- Only playlists are synced
 
 # 🧠 TODO:
 - [ ] Use cosine similarity of LLM embeddings to better evaluate match
