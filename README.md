@@ -1,41 +1,41 @@
-# About this repo
+# MusicSync
 
-## Summary
-Synchronize Apple Music library with Spotify.
+### Synchronize your Apple Music library with Spotify.
+This tool matches songs between platforms with precision and gives you **full control over your data**.
 
-## Features
-- Complete control over your data (data is only processed by Spotify's API, no third party)
-- Supports incremental syncing by keeping track of what has been synced before
-- Provides detailed reports on the syncing effectiveness by logging song matches and their associated similarity scores.
-  See example below:
+# 🚀 Features
+
+- 100% local processing – no third-party servers involved.
+- Incremental syncing: tracks previously synced are tracked.
+- Detailed logging of sync results, including match scores.
+- Handles edge cases like artist collaborations (`feat.`, `&`, etc.)
+
+<details>
+<summary>🔍 Example Sync Report</summary>
 
 | Apple Song Name   | Apple Artist     | Apple Album            | Spotify Song Name   | Spotify Artist   | Spotify Album   | Spotify Track ID       | Total Similarity | Song Similarity | Artist Similarity | Album Similarity |
 |:------------------|:-----------------|:-----------------------|:--------------------|:-----------------|:----------------|:-----------------------|-----------------:|----------------:|------------------:|-----------------:|
-| Caruso            | Fiorella Mannoia | A te (Special Edition) | Caruso              | Fiorella Mannoia | A te            | 2kWftUZ8PxLQtRvrHX3cIe |             0.68 |            0.83 |              0.88 |              0.3 |
+| Caruso            | Fiorella Mannoia | A te (Special Edition) | Caruso              | Fiorella Mannoia | A te            | 2kWftUZ8PxLQtRvrHX3cIe |             0.79 |             1.0 |               1.0 |              0.30 |
 
-- Successfully matches various edge cases, such as artist collaborations (e.g. `&` in artist name or `feat.` in song name)
+</details>
 
-# Installation guide
+# 🛠 Installation
 
-## 1. Set up Spotify developer account & register app
+## 1. Register a Spotify Developer App
 
 These steps have been validated with the website's version as of 2021-01-17.
 
-1. Go to https://developer.spotify.com/dashboard/ and create an account
-2. Click on "CREATE AN APP"
-3. Provide the app name & description of your choice, tick the terms of service and click "CREATE"
-4. Click on "EDIT SETTINGS"
-5. Under "Redirect URIs" put `http://localhost:9000/callback/` and `http://localhost:8090`
-6. On the left side of the dashboard, underneath the description of your app, you will find your apps' "Client ID".
-   Take note of it as you will need it in step 2.2.
-7. Below your "Client ID" you will find an option to "SHOW CLIENT SECRET", click on it and take note of the value as you
-   you will need it in step 2.2.
+1. Visit [Spotify Developer Dashboard]https://developer.spotify.com/dashboard/ and create/log into your account
+2. Click on `CREATE AN APP`
+   - Provide the app name & description of your choice, tick the terms of service and click "CREATE"
+3. In `EDIT SETTINGS`, under `Redirect URIs` add the following URLs:
+   - `http://localhost:9000/callback/`
+   - `http://localhost:8090`
+4. Save your **Client ID** and **Client Secret** – you'll need them in Section 2.3.
 
-## 2. Set up the environment on your machine
+## 2. Set-up Environment
 
-### 2.1 Get the code & set environmental variables
-
-The below instructions are for Linux or MacOS.
+### 2.1 Clone Repository
 
 ```commandline
 git clone git@github.com:calyptis/MusicSync.git
@@ -43,78 +43,78 @@ cd MusicSync
 source prepare_env.sh
 ```
 
-### 2.2 Install module
+### 2.2 Install Dependencies
 
-Install pinned development dependencies using:
-
+Using pip:
 ```
 pip install -r requirements.txt
 ```
 
-If you are using Conda to manage your Python environments:
+Using conda:
 
 ```
 conda env create -f environment.yml
 ```
 
-Alternatively, if you are using an existing environment, you can install the module in [editable mode](https://setuptools.pypa.io/en/latest/userguide/development_mode.html), which includes only minimal dependencies:
+For development:
 
 ```
 pip install -e .
 ```
 
 
-### 2.3 Specify your credentials
+### 2.3 Add Your Credentials
 
-In the folder `credentials` create a file named `credentials.json`
-where you specify the configurations you obtained in step 1.6 & 1.7.
-
-The file has the following structure:
+Create a file `credentials/credentials.json` with the following content:
 
 ```python
 {
-	"client_id": "...",
-	"client_secret": "...",
+	"client_id": "your-client-id",
+	"client_secret": "your-client-secret",
 	"redirect_uri": "http://localhost:9000/callback/",
 }
 ```
 
-replace your client ID with value from step 1.6 and your client secret from step 1.7.
+replace your client ID and secret with the values obtained from step 4 in Section 1.
 
 
-# User instructions
+# 🎵 Syncing Your Library
 
-First and foremost
-- open Music app (macOS or Windows, tested with app version `1.2.5.7`)
-- Go to `File -> Library -> Export Library...`
-- Save file as `Library.xml` in `data/apple_music/`
+## Step 1: Export from Apple Music
 
-Only then, can your playlists be synced.
+- Open the Apple Music app (tested with version 1.2.5.7)
+- Go to File → Library → Export Library...
+- Save the file as `Library.xml` in the `data/apple_music/` directory
 
-### To run the entire pipeline (parse Apply Music Library + sync it in its entirety)
+> ⚠️ You must complete this step before syncing!
+
+## Step 2: Sync
+
+### Syncs entire library (all playlists)
 ```bash
 python -m music_sync.main
 ```
 
-### To sync a specific playlist
-1. If Apple Music library has not yet been parsed:
+### Syncs a specific playlist
+
+1. Parse the Apple Music library (if not already done):
 
 ```bash
 python -m music_sync.apple_music.main
 ```
 
-2. Sync a specific playlist
+2. Sync a playlist by name
 
 ```bash
 python -m music_sync.spotify.main --name "Apple Music Playlist Name"
 ```
 
-# Notes
-- Syncing a playlist only **adds** songs
-  - Songs removed in the Apple Music playlist **will not** be **removed** from the Spotify playlist after syncing.
+# ⚠️ Notes
+- Syncing only adds songs to Spotify playlists
+- Songs removed in Apple Music will not be removed from the Spotify playlist.
 
-# TODO:
+# 🧠 TODO:
 - [ ] Use cosine similarity of LLM embeddings to better evaluate match
 
-# Related projects
+# 🔗 Related projects
 - https://soundiiz.com
