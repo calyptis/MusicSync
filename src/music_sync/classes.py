@@ -23,9 +23,9 @@ class Similarity(BaseModel):
     """Song similarity scores."""
 
     total_similarity: Optional[float] = None
-    song_name_similarity: Optional[float] = None
-    artist_name_similarity: Optional[float] = None
-    album_name_similarity: Optional[float] = None
+    song_similarity: Optional[float] = None
+    artist_similarity: Optional[float] = None
+    album_similarity: Optional[float] = None
 
 
 class SongMatch(BaseModel):
