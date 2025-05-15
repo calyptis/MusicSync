@@ -59,7 +59,7 @@ def get_chunks(original_list: list, n: int) -> Generator[list, None, None]:
 
 def get_credentials(credentials_path: str = CREDENTIALS_PATH) -> dict:
     """
-    Reads in credentials stored in a file
+    Read in credentials stored in a file.
 
     Parameters
     ----------
@@ -185,42 +185,54 @@ def get_spotipy_instance() -> spotipy.Spotify:
 
 
 def get_songs_to_sync(
-    filepath: str, playlist_songs: list[Song]
-) -> tuple[list[Song], bool]:
+    log_data: list[dict],
+    playlist_songs: list[Song],
+    playlist_name: str,
+) -> [list[dict], dict[str, list[Song | str]]]:
     """
     Compares the songs in a playlist with a synced log file to identify songs that need syncing.
 
     Parameters
     ----------
-    filepath : str
-        Path to the log file containing songs already synced.
+    log_data : dict
+        JSON data storing log data.
     playlist_songs : list[Song]
         List of Song objects representing the songs currently in the playlist.
+    playlist_name : str
+        Name of the playlist.
 
     Returns
     -------
-    tuple[list[Song], bool]
-        A tuple containing:
-        - List of Song objects that need to be synced.
-        - Boolean indicating whether the playlist has already been synced prior.
+    updated_log_data : list[dict] :
+        Updated JSON data storing log data.
+        Songs in database that have not yet been assigned to the playlist, will be now.
+    songs_to_sync: dict[str, list[Song | str]] :
+        Dictionary containing songs to search and those to assign.
     """
-    flag_already_synced = os.path.exists(filepath)
-    songs_to_sync = playlist_songs
 
-    if flag_already_synced:
-        logging.info("Playlist was already synced once before")
-        df_logs = pd.read_csv(filepath)
-        tracks_already_synced = df_logs[
-            ["Apple Song Name", "Apple Artist", "Apple Album"]
-        ]
-        # Rename columns to easily create Song instance
-        tracks_already_synced.columns = ["name", "artist", "album"]
-        tracks_already_synced = tracks_already_synced.replace(
-            [np.nan, pd.NA], None
-        ).to_dict(orient="records")
-        # Create song instances
-        tracks_already_synced = [Song(**i) for i in tracks_already_synced]
-        # Identify songs not yet synced
-        songs_to_sync = list(set(songs_to_sync) - set(tracks_already_synced))
+    found_track_ids = set()
+    updated_log_data = []
 
-    return songs_to_sync, flag_already_synced
+    playlist_track_ids = [song.track_id for song in playlist_songs]
+
+    songs_to_sync = {
+        # Holds songs not already in the log database and thus have to be searched
+        "to_search": [],
+        # Holds songs already in the log database, and thus we can simply assign them to the playlist
+        "to_assign": [],
+    }
+
+    for entry in log_data:
+        track_id = entry["apple_track_id"]
+        if track_id in playlist_track_ids:
+            found_track_ids.add(track_id)
+            if playlist_name not in entry["apple_playlist"]:
+                songs_to_sync["to_assign"].append(entry["spotify_track_id"])
+                entry["apple_playlist"].append(playlist_name)
+        updated_log_data.append(entry)
+
+    songs_to_sync["to_search"] = [
+        song for song in playlist_songs if song.track_id not in found_track_ids
+    ]
+
+    return updated_log_data, songs_to_sync
