@@ -220,6 +220,8 @@ def get_songs_to_sync(
     }
 
     for entry in log_data:
+        if "apple_playlist" not in entry:
+            continue
         track_id = entry["apple_track_id"]
         if track_id in playlist_track_ids:
             found_track_ids.add(track_id)

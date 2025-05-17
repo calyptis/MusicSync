@@ -96,7 +96,7 @@ def sync_playlist(
     playlist_songs = [Song(**i) for i in playlist_songs]
     log_data = json.load(open(filepath, "r")) if os.path.exists(filepath) else [{}]
 
-    synced_playlists = [i.get("apple_playlist") for i in log_data]
+    synced_playlists = [i.get("apple_playlist") for i in log_data if i.get("apple_playlist") is not None]
     synced_playlists = set([x for xs in synced_playlists for x in xs])
 
     flag_synced_before = playlist_name in synced_playlists
