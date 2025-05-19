@@ -157,9 +157,7 @@ def sync_playlist(
         # Add column for playlist
         matched_songs["apple_playlist"] = [[playlist_name]] * len(matched_songs)
         n_initial_matches = len(matched_songs)
-        # Check
-        check = set(matched_songs.columns) == set(updated_log_data[0].keys())
-        if not check:
+        if len(updated_log_data) > 0 and not set(matched_songs.columns) == set(updated_log_data[0].keys()):
             logging.error("Matched songs have the wrong column names")
             logging.error(
                 f"Mismatch: {set(matched_songs.columns) - set(updated_log_data[0].keys())}"
