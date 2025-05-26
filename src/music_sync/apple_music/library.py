@@ -153,6 +153,11 @@ def prepare_playlists_for_syncing(
     apple_music_songs.columns = apple_music_songs.columns.str.lower().str.replace(
         " ", "_"
     )
+
+    # Replace NaN with empty strings
+    apple_music_songs = apple_music_songs.fillna("")
+
+
     apple_music_songs.set_index("track_id", inplace=True)
     apple_music_playlists = json.load(open(raw_playlists_file, "rb"))
 

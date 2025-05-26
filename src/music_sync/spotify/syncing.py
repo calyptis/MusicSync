@@ -96,7 +96,7 @@ def sync_playlist(
     playlist_songs = [Song(**i) for i in playlist_songs]
     log_data = json.load(open(filepath, "r")) if os.path.exists(filepath) else [{}]
 
-    synced_playlists = [i.get("apple_playlist") for i in log_data]
+    synced_playlists = [i.get("apple_playlist") for i in log_data if i.get("apple_playlist") is not None]
     synced_playlists = set([x for xs in synced_playlists for x in xs])
 
     flag_synced_before = playlist_name in synced_playlists
@@ -157,9 +157,7 @@ def sync_playlist(
         # Add column for playlist
         matched_songs["apple_playlist"] = [[playlist_name]] * len(matched_songs)
         n_initial_matches = len(matched_songs)
-        # Check
-        check = set(matched_songs.columns) == set(updated_log_data[0].keys())
-        if not check:
+        if len(updated_log_data) > 0 and not set(matched_songs.columns) == set(updated_log_data[0].keys()):
             logging.error("Matched songs have the wrong column names")
             logging.error(
                 f"Mismatch: {set(matched_songs.columns) - set(updated_log_data[0].keys())}"
