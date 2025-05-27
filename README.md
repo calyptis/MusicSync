@@ -6,7 +6,7 @@ This tool matches songs between platforms with precision and gives you **full co
 # 🚀 Features
 
 - Syncs only playlists
-   - To sync all your entire library, add it to a single playlist
+   - To sync your entire library, add it to a single playlist
 - 100% local processing – no third-party servers involved.
 - Incremental syncing: tracks previously synced songs.
 - Detailed logging of sync results, including match scores.
