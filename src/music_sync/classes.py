@@ -1,4 +1,4 @@
-"""Define match."""
+"""Data models for songs, similarity scores, and song matches."""
 from pydantic import BaseModel
 from typing import Optional, Union
 

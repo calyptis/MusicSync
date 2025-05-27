@@ -1,3 +1,5 @@
+"""Utility functions for Spotify API access, string cleaning, retries, and query generation."""
+
 import logging
 import json
 import time

@@ -1,3 +1,5 @@
+"""Main CLI for end-to-end Apple Music library parsing and Spotify playlist syncing."""
+
 import os
 import logging
 import json

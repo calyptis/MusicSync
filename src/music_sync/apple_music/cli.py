@@ -1,3 +1,4 @@
+"""CLI for processing Apple Music library and playlists."""
 import click
 
 from music_sync.apple_music.parse_library import (

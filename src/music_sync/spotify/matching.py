@@ -1,3 +1,5 @@
+"""Functions for matching Apple Music songs to Spotify tracks using similarity metrics."""
+
 import re
 import requests
 

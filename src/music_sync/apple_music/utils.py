@@ -1,3 +1,5 @@
+"""Utility functions for parsing Apple Music XML elements."""
+
 from xml.etree.ElementTree import Element
 
 

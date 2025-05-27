@@ -1,3 +1,4 @@
+"""Configuration constants and file paths for Apple Music processing."""
 import os
 from music_sync.config import APPLE_MUSIC_DIR
 

@@ -1,3 +1,5 @@
+"""Global configuration constants, directory paths, and settings for MusicSync."""
+
 import os
 import pathlib
 

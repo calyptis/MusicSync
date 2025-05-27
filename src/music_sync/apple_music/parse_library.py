@@ -1,3 +1,5 @@
+"""Functions for parsing and preparing Apple Music library and playlists."""
+
 import json
 import logging
 

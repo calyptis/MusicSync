@@ -1,3 +1,5 @@
+"""Functions for measuring string similarity between Apple Music and Spotify songs."""
+
 import numpy as np
 from rapidfuzz import fuzz
 

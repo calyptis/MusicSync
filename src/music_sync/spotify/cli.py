@@ -1,3 +1,5 @@
+"""CLI for syncing prepared Apple Music playlists to Spotify."""
+
 import click
 import json
 

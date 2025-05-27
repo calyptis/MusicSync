@@ -1,3 +1,5 @@
+"""Functions for syncing Apple Music playlists to Spotify and managing sync logs."""
+
 import logging
 import json
 import pathlib
