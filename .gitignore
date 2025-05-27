@@ -3,5 +3,7 @@ data/**
 **/.cache
 **/.spotify_caches
 **/.DS_Store
-**/__pychache/
+**/__pycache__
 **/.ipynb_checkpoints
+.idea/
+**/*.egg-info
