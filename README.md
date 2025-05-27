@@ -27,7 +27,7 @@ This tool matches songs between platforms with precision and gives you **full co
 
 These steps have been validated with the website's version as of 2021-01-17.
 
-1. Visit [Spotify Developer Dashboard]https://developer.spotify.com/dashboard/ and create/log into your account
+1. Visit [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/) and create/log into your account
 2. Click on `CREATE AN APP`
    - Provide the app name & description of your choice, tick the terms of service and click "CREATE"
 3. In `EDIT SETTINGS`, under `Redirect URIs` add the following URLs:
