@@ -2,7 +2,7 @@ import click
 import json
 
 from music_sync.apple_music.config import PREPARED_PLAYLIST_FILE
-from music_sync.spotify.syncing import sync_playlist
+from music_sync.spotify.sync import sync_playlist
 from music_sync.spotify.utils import get_spotipy_instance
 
 

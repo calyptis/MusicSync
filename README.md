@@ -93,7 +93,7 @@ replace your client ID and secret with the values obtained from step 4 in Sectio
 
 ### Syncs entire library (all playlists)
 ```bash
-python -m music_sync.main
+python -m music_sync.cli
 ```
 - To exclude certain playlists, add them to the EXCLUDE_PLAYLIST_FILE.
     - List one playlist per line.
@@ -103,13 +103,13 @@ python -m music_sync.main
 1. Parse the Apple Music library (if not already done):
 
 ```bash
-python -m music_sync.apple_music.main
+python -m music_sync.apple_music.cli
 ```
 
 2. Sync a playlist by name
 
 ```bash
-python -m music_sync.spotify.main --name "Apple Music Playlist Name"
+python -m music_sync.spotify.cli --name "Apple Music Playlist Name"
 ```
 
 # ⚠️ Notes

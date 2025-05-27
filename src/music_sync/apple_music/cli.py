@@ -1,6 +1,6 @@
 import click
 
-from music_sync.apple_music.library import (
+from music_sync.apple_music.parse_library import (
     save_apple_music_library,
     prepare_playlists_for_syncing,
 )

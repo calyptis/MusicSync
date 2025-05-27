@@ -8,7 +8,6 @@ import spotipy
 
 from music_sync.spotify.utils import (
     get_chunks,
-    get_songs_to_sync,
 )
 from music_sync.classes import Song
 from music_sync.config import COLUMN_MAPPING, LOG_FILE, SYNCING_THRESHOLD
@@ -96,7 +95,9 @@ def sync_playlist(
     playlist_songs = [Song(**i) for i in playlist_songs]
     log_data = json.load(open(filepath, "r")) if os.path.exists(filepath) else [{}]
 
-    synced_playlists = [i.get("apple_playlist") for i in log_data if i.get("apple_playlist") is not None]
+    synced_playlists = [
+        i.get("apple_playlist") for i in log_data if i.get("apple_playlist") is not None
+    ]
     synced_playlists = set([x for xs in synced_playlists for x in xs])
 
     flag_synced_before = playlist_name in synced_playlists
@@ -157,7 +158,9 @@ def sync_playlist(
         # Add column for playlist
         matched_songs["apple_playlist"] = [[playlist_name]] * len(matched_songs)
         n_initial_matches = len(matched_songs)
-        if len(updated_log_data) > 0 and not set(matched_songs.columns) == set(updated_log_data[0].keys()):
+        if len(updated_log_data) > 0 and not set(matched_songs.columns) == set(
+            updated_log_data[0].keys()
+        ):
             logging.error("Matched songs have the wrong column names")
             logging.error(
                 f"Mismatch: {set(matched_songs.columns) - set(updated_log_data[0].keys())}"
@@ -204,3 +207,60 @@ def sync_playlist(
             json.dump(updated_log_data, f)
 
     logging.info(f"Done with playlist {playlist_name}.\n")
+
+
+def get_songs_to_sync(
+    log_data: list[dict],
+    playlist_songs: list[Song],
+    playlist_name: str,
+) -> [list[dict], dict[str, list[Song | str]]]:
+    """
+    Compare the songs in a playlist with a synced log file to identify songs that need syncing.
+
+    Parameters
+    ----------
+    log_data : dict
+        JSON data storing log data.
+    playlist_songs : list[Song]
+        List of Song objects representing the songs currently in the playlist.
+    playlist_name : str
+        Name of the playlist.
+
+    Returns
+    -------
+    updated_log_data : list[dict] :
+        Updated JSON data storing log data.
+        Songs in database that have not yet been assigned to the playlist, will be now.
+    songs_to_sync: dict[str, list[Song | str]] :
+        Dictionary containing songs to search and those to assign.
+    """
+
+    found_track_ids = set()
+    updated_log_data = []
+
+    playlist_track_ids = [song.track_id for song in playlist_songs]
+
+    songs_to_sync = {
+        # Holds songs not already in the log database and thus have to be searched
+        "to_search": [],
+        # Holds songs already in the log database, and thus we can simply assign them to the playlist
+        "to_assign": [],
+    }
+
+    for entry in log_data:
+        if "apple_playlist" not in entry:
+            logging.info(f"Skipping entry without playlist information: {entry}")
+            continue
+        track_id = entry["apple_track_id"]
+        if track_id in playlist_track_ids:
+            found_track_ids.add(track_id)
+            if playlist_name not in entry["apple_playlist"]:
+                songs_to_sync["to_assign"].append(entry["spotify_track_id"])
+                entry["apple_playlist"].append(playlist_name)
+        updated_log_data.append(entry)
+
+    songs_to_sync["to_search"] = [
+        song for song in playlist_songs if song.track_id not in found_track_ids
+    ]
+
+    return updated_log_data, songs_to_sync
