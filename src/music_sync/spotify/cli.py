@@ -3,7 +3,7 @@
 import click
 import json
 
-from music_sync.apple_music.config import PREPARED_PLAYLIST_FILE
+from music_sync.config import config
 from music_sync.spotify.sync import sync_playlist
 from music_sync.spotify.utils import get_spotipy_instance
 
@@ -17,7 +17,7 @@ from music_sync.spotify.utils import get_spotipy_instance
     help="Name of the playlist to sync.",
 )
 def main(playlist_name: str):
-    playlists = json.load(open(PREPARED_PLAYLIST_FILE, "r"))
+    playlists = json.load(open(config.apple_music.prepared_playlist_file, "r"))
     sp_instance = get_spotipy_instance()
     if playlist_name in playlists:
         sync_playlist(sp_instance, playlist_name, playlists[playlist_name])
