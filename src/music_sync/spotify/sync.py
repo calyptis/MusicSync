@@ -1,26 +1,24 @@
 """Functions for syncing Apple Music playlists to Spotify and managing sync logs."""
 
-import logging
 import json
 import pathlib
 import os
+from itertools import batched
 
+from loguru import logger
 import pandas as pd
 import spotipy
+from tqdm import tqdm
+from pandas import DataFrame
 
-from music_sync.spotify.utils import (
-    get_chunks,
-)
-from music_sync.classes import Song
-from music_sync.config import COLUMN_MAPPING, LOG_FILE, SYNCING_THRESHOLD
+from music_sync.classes import Song, SongsToSync
+from music_sync.config import config
 from music_sync.spotify.matching import get_best_match
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler()],
-)
+PLAYLIST_FETCH_LIMIT = 50
+UPDATE_FREQUENCY = 50
+CHUNK_SIZE = 100
 
 
 def get_playlist_tracks(sp: spotipy.Spotify, playlist_id: str) -> list:
@@ -67,7 +65,7 @@ def sync_playlist(
     sp: spotipy.Spotify,
     playlist_name: str,
     playlist_songs: list[dict[str, str]],
-    filepath: pathlib.Path = LOG_FILE,
+    filepath: pathlib.Path = config.sync.log_file,
 ):
     """
     Sync a given playlist.
@@ -86,16 +84,20 @@ def sync_playlist(
     playlist_songs
         The songs that should be in this playlist in the form of [(song name, artist name, album name), ...]
     filepath: str :
-        File logging synced songs.
+        File logger synced songs.
 
     Returns
     -------
 
     """
-    logging.info(f"Working with playlist: {playlist_name}")
+    logger.info(f"Working with playlist: {playlist_name}")
 
     playlist_songs = [Song(**i) for i in playlist_songs]
-    log_data = json.load(open(filepath, "r")) if os.path.exists(filepath) else [{}]
+    if os.path.exists(filepath):
+        with open(filepath, "r") as f:
+            log_data = json.load(f)
+    else:
+        log_data = [{}]
 
     synced_playlists = [
         i.get("apple_playlist") for i in log_data if i.get("apple_playlist") is not None
@@ -103,30 +105,31 @@ def sync_playlist(
     synced_playlists = set([x for xs in synced_playlists for x in xs])
 
     flag_synced_before = playlist_name in synced_playlists
-    logging.info(f"Has playlist been synced before? {flag_synced_before}")
+    logger.info(f"Has the playlist been synced before? {flag_synced_before}")
 
     updated_log_data, songs_to_sync = get_songs_to_sync(
         log_data, playlist_songs, playlist_name
     )
 
     n_items = sum([len(v) for v in songs_to_sync.values()])
-    logging.info(f"Need to sync {n_items:,} songs")
+    logger.info(f"Need to sync {n_items:,} songs")
 
     user_id = sp.current_user()["id"]
     offset = 0
-    limit = 50
     d_existing_playlists = {}
     while True:
-        list_playlists = sp.user_playlists(user_id, limit=limit, offset=offset)["items"]
+        list_playlists = sp.user_playlists(
+            user_id, limit=PLAYLIST_FETCH_LIMIT, offset=offset
+        )["items"]
         d_playlists = {v["name"]: v["id"] for v in list_playlists}
-        if len(d_playlists) == 0 or d_playlists is None:
+        if not d_playlists:
             break
         d_existing_playlists = {**d_existing_playlists, **d_playlists}
-        offset += limit
+        offset += PLAYLIST_FETCH_LIMIT
 
     # If playlist does not already exist on Spotify, create it
     if playlist_name not in d_existing_playlists:
-        logging.info("Spotify playlist was newly created")
+        logger.info("Spotify playlist was newly created")
         info = sp.user_playlist_create(user_id, playlist_name, public=False)
         tracks = []
         playlist_id = info["id"]
@@ -134,72 +137,72 @@ def sync_playlist(
         playlist_id = d_existing_playlists[playlist_name]
         tracks = get_playlist_tracks(sp, playlist_id)
         # noinspection PyTypeChecker
-        logging.info(
-            f"Spotify playlist already exists and contains {len(tracks)} songs"
-        )
+        logger.info(f"Spotify playlist already exists and contains {len(tracks)} songs")
+
+    track_ids = {track[0] for track in tracks}
 
     to_match = songs_to_sync["to_search"]
-    logging.info(f"Finding matching Spotify songs for {len(to_match):,} Apple songs.")
+    logger.info(f"Finding matching Spotify songs for {len(to_match):,} Apple songs.")
     # For above songs, search for availability in Spotify's catalogue
-    update_frequency = 50
     count = 0
-    matched_songs = []
-    for song in to_match:
+    matched_songs: list = []
+    for song in tqdm(to_match, desc="Matching songs"):
         count += 1
-        matched_songs += [get_best_match(sp, song)]
-        if count % update_frequency == 0:
-            logging.info(f"Matched {count} out of {len(to_match):,} songs")
+        matched_songs.append(get_best_match(sp, song))
 
     to_sync = []
 
+    matched_songs = [pd.json_normalize(i.model_dump()) for i in matched_songs]
+    # Filter out empty DataFrames before concatenation
+    matched_songs = [
+        df for df in matched_songs if not df.empty or ~df.isnull().all().all()
+    ]
     if matched_songs:
-        matched_songs = [pd.json_normalize(i.model_dump()) for i in matched_songs]
-        matched_songs = pd.concat(matched_songs)
+        df_matched_songs: pd.DataFrame = pd.concat(matched_songs, ignore_index=True)
         # Make sure columns correspond to original names
-        matched_songs.rename(columns=COLUMN_MAPPING, inplace=True)
+        df_matched_songs.rename(columns=config.sync.column_mapping, inplace=True)
         # Add column for playlist
-        matched_songs["apple_playlist"] = [[playlist_name]] * len(matched_songs)
-        n_initial_matches = len(matched_songs)
-        if len(updated_log_data) > 0 and not set(matched_songs.columns) == set(
+        df_matched_songs["apple_playlist"] = [[playlist_name]] * len(df_matched_songs)
+        n_initial_matches = len(df_matched_songs)
+        if len(updated_log_data) > 0 and not set(df_matched_songs.columns) == set(
             updated_log_data[0].keys()
         ):
-            logging.error("Matched songs have the wrong column names")
-            logging.error(
-                f"Mismatch: {set(matched_songs.columns) - set(updated_log_data[0].keys())}"
+            logger.error("Matched songs have the wrong column names")
+            logger.error(
+                f"Mismatch: {set(df_matched_songs.columns) - set(updated_log_data[0].keys())}"
             )
             raise Exception(
                 "Dataframe resulting from SongMatch class has wrong column names"
             )
         # Filter out poor matches
-        matched_songs = matched_songs.query(
-            f"total_similarity >= {SYNCING_THRESHOLD}"
+        df_matched_songs = df_matched_songs.query(
+            f"total_similarity >= {config.sync.similarity_threshold}"
         ).copy()
         # Filter out songs that are already in the playlist
         # Perhaps because the given song was the best match to a highly similar Apple song in the same playlist
-        matched_songs = matched_songs.loc[
-            lambda x: ~x["spotify_track_id"].isin(tracks)
+        df_matched_songs = df_matched_songs.loc[
+            ~df_matched_songs["spotify_track_id"].isin(track_ids)
         ].copy()
         # Provide some info
-        n_songs_actually_added = len(matched_songs)
-        msg = "{0} of {1} are good matches".format(
+        n_songs_actually_added = len(df_matched_songs)
+        msg = "{0} songs out of {1} are good matches".format(
             n_songs_actually_added, n_initial_matches
         )
-        logging.info(msg)
+        logger.info(msg)
         # Add matched songs to log data
-        updated_log_data += matched_songs.to_dict("records")
-        to_sync += matched_songs["spotify_track_id"].values.tolist()
+        updated_log_data += df_matched_songs.to_dict("records")
+        to_sync += df_matched_songs["spotify_track_id"].values.tolist()
         # Break songs to be added into chunks so as not to cause timeout
 
     # Songs that have been synced before (for a different playlist) and simply need to be assigned
     # to this playlist as well
-    logging.info(
-        f"Songs without need to match but to add: {len(songs_to_sync['to_assign']):,}"
+    logger.info(
+        f"Songs to add that have already been matched before for another playlist: {len(songs_to_sync['to_assign']):,}"
     )
     to_sync += songs_to_sync["to_assign"]
 
     if to_sync:
-        chunks = get_chunks(to_sync, 100)
-        for chunk in chunks:
+        for chunk in batched(to_sync, CHUNK_SIZE):
             # Add matched songs to Spotify playlist
             sp.playlist_add_items(playlist_id, chunk)
 
@@ -208,14 +211,14 @@ def sync_playlist(
             # noinspection PyTypeChecker
             json.dump(updated_log_data, f)
 
-    logging.info(f"Done with playlist {playlist_name}.\n")
+    logger.info(f"Done with playlist {playlist_name}.\n")
 
 
 def get_songs_to_sync(
     log_data: list[dict],
     playlist_songs: list[Song],
     playlist_name: str,
-) -> [list[dict], dict[str, list[Song | str]]]:
+) -> tuple[list[dict], SongsToSync]:
     """
     Compare the songs in a playlist with a synced log file to identify songs that need syncing.
 
@@ -240,7 +243,7 @@ def get_songs_to_sync(
     found_track_ids = set()
     updated_log_data = []
 
-    playlist_track_ids = [song.track_id for song in playlist_songs]
+    playlist_track_ids = {song.track_id for song in playlist_songs}
 
     songs_to_sync = {
         # Holds songs not already in the log database and thus have to be searched
@@ -251,7 +254,7 @@ def get_songs_to_sync(
 
     for entry in log_data:
         if "apple_playlist" not in entry:
-            logging.info(f"Skipping entry without playlist information: {entry}")
+            logger.info(f"Skipping entry without playlist information: {entry}")
             continue
         track_id = entry["apple_track_id"]
         if track_id in playlist_track_ids:

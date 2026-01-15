@@ -1,25 +1,18 @@
 """Utility functions for Spotify API access, string cleaning, retries, and query generation."""
 
-import logging
 import json
 import time
 from typing import Generator
 from requests.exceptions import ReadTimeout
 import re
 
+from loguru import logger
 from spotipy.oauth2 import SpotifyOAuth
 import spotipy
 from spotipy.exceptions import SpotifyException
 
 from music_sync.classes import Song
-from music_sync.config import CREDENTIALS_PATH, SCOPES
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler()],
-)
+from music_sync.config import config
 
 
 def clean_string(x: str) -> str:
@@ -38,25 +31,7 @@ def clean_string(x: str) -> str:
     return x.lower().strip()
 
 
-def get_chunks(original_list: list, n: int) -> Generator[list, None, None]:
-    """
-    Yield successive n-sized chunks from list.
-
-    Parameters
-    ----------
-    original_list : list
-        Original list to be split into chunks
-    n : int
-        Number of items in chunk
-
-    Returns
-    -------
-    """
-    for i in range(0, len(original_list), n):
-        yield original_list[i : i + n]
-
-
-def get_credentials(credentials_path: str = CREDENTIALS_PATH) -> dict:
+def get_credentials(credentials_path: str = config.spotify.credentials_file) -> dict:
     """
     Read in credentials stored in a file.
 
@@ -64,10 +39,6 @@ def get_credentials(credentials_path: str = CREDENTIALS_PATH) -> dict:
     ----------
     credentials_path
         Path to the JSON containing Spotify API credentials & configurations
-
-    Returns
-    -------
-
     """
     return json.load(open(credentials_path, "rb"))
 
@@ -94,12 +65,12 @@ def timeout_wrapper(api_call, n_retries: int = 5, backoff_factor: float = 0.8):
         try:
             return api_call()
         except (TimeoutError, ReadTimeout, SpotifyException) as e:
-            logging.warning(f"Timeout on attempt {attempt}/{n_retries}: {e}")
+            logger.warning(f"Timeout on attempt {attempt}/{n_retries}: {e}")
             time.sleep(backoff_factor * attempt)
         except Exception as e:
-            logging.error(f"Non-timeout exception during API call: {e}")
+            logger.error(f"Non-timeout exception during API call: {e}")
             break
-    logging.error("API call failed after maximum retries.")
+    logger.error("API call failed after maximum retries.")
     return None
 
 
@@ -177,7 +148,7 @@ def get_spotipy_instance() -> spotipy.Spotify:
             client_id=spotify_credentials["client_id"],
             client_secret=spotify_credentials["client_secret"],
             redirect_uri=spotify_credentials["redirect_uri"],
-            scope=SCOPES,
+            scope=config.spotify.scopes,
         )
     )
     return spotipy_instance
