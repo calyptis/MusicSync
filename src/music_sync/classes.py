@@ -1,6 +1,6 @@
 """Data models for songs, similarity scores, and song matches."""
 from pydantic import BaseModel
-from typing import Optional, Union
+from typing import Optional, Union, TypedDict
 
 
 class Song(BaseModel):
@@ -34,3 +34,8 @@ class SongMatch(BaseModel):
     apple_info: Song
     spotify_info: Song
     similarity: Similarity
+
+
+class SongsToSync(TypedDict):
+    to_search: list[Song]
+    to_assign: list[str]
