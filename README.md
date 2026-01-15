@@ -46,22 +46,12 @@ cd MusicSync
 
 ### 2.2 Install Dependencies
 
-Using pip:
+Using uv (recommended):
 ```
-pip install -r requirements.txt
-```
-
-Using conda:
-
-```
-conda env create -f environment.yml
+uv pip install -e .
 ```
 
-For development:
-
-```
-pip install -e .
-```
+This installs the package in editable mode with all dependencies.
 
 
 ### 2.3 Add Your Credentials
