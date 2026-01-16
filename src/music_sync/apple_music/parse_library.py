@@ -1,29 +1,17 @@
 """Functions for parsing and preparing Apple Music library and playlists."""
 
 import json
-import logging
 
+from loguru import logger
 import pandas as pd
 import xml.etree.ElementTree as ElTr
 
-from music_sync.apple_music.config import (
-    APPLE_MUSIC_LIBRARY_FILE,
-    SONG_FILE,
-    RAW_PLAYLIST_FILE,
-    PREPARED_PLAYLIST_FILE,
-)
+from music_sync.config import config
 from music_sync.apple_music.utils import get_entry
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler()],
-)
-
-
 def parse_apple_music_library(
-    filename: str = APPLE_MUSIC_LIBRARY_FILE,
+    filename: str = config.apple_music.library_file,
 ) -> tuple[pd.DataFrame, dict]:
     """
     Parse Apple Music library, which is exported using File -> Library -> Export Library...
@@ -90,9 +78,9 @@ def parse_apple_music_library(
 
 
 def save_apple_music_library(
-    xml_library_file: str = APPLE_MUSIC_LIBRARY_FILE,
-    playlists_file: str = RAW_PLAYLIST_FILE,
-    songs_file: str = SONG_FILE,
+    xml_library_file: str = config.apple_music.library_file,
+    playlists_file: str = config.apple_music.raw_playlist_file,
+    songs_file: str = config.apple_music.song_file,
 ):
     """
     Write Apple Music Library Data to Specified Files
@@ -114,8 +102,8 @@ def save_apple_music_library(
 
     """
     songs, playlists = parse_apple_music_library(xml_library_file)
-    logging.info(f"Number of songs: {len(songs):,}")
-    logging.info(f"Number of playlists: {len(playlists):,}")
+    logger.info(f"Number of songs: {len(songs):,}")
+    logger.info(f"Number of playlists: {len(playlists):,}")
     songs.to_csv(songs_file, index=False)
     with open(playlists_file, "w") as f:
         # noinspection PyTypeChecker
@@ -123,9 +111,9 @@ def save_apple_music_library(
 
 
 def prepare_playlists_for_syncing(
-    songs_file: str = SONG_FILE,
-    raw_playlists_file: str = RAW_PLAYLIST_FILE,
-    parsed_playlists_file: str = PREPARED_PLAYLIST_FILE,
+    songs_file: str = config.apple_music.song_file,
+    raw_playlists_file: str = config.apple_music.raw_playlist_file,
+    parsed_playlists_file: str = config.apple_music.prepared_playlist_file,
 ):
     """
     Prepare playlists by parsing raw playlist data and mapping it to metadata from available songs.
@@ -157,7 +145,7 @@ def prepare_playlists_for_syncing(
     )
 
     # Replace NaN with empty strings
-    apple_music_songs = apple_music_songs.fillna("")
+    apple_music_songs.fillna("", inplace=True)
 
     apple_music_songs.set_index("track_id", inplace=True)
     apple_music_playlists = json.load(open(raw_playlists_file, "rb"))
@@ -168,7 +156,7 @@ def prepare_playlists_for_syncing(
     )
     mask_invalid = ~mask_valid
     apple_music_songs = apple_music_songs.loc[mask_valid]
-    logging.info(f"Number of invalid track IDs: {mask_invalid.sum():,}")
+    logger.info(f"Number of invalid track IDs: {mask_invalid.sum():,}")
     valid_songs = set(apple_music_songs.index.tolist())
 
     # Convert Track IDs in playlist file to tuples of Name, Artist, Album

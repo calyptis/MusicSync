@@ -5,39 +5,34 @@ from music_sync.apple_music.parse_library import (
     save_apple_music_library,
     prepare_playlists_for_syncing,
 )
-from music_sync.apple_music.config import (
-    APPLE_MUSIC_LIBRARY_FILE,
-    SONG_FILE,
-    RAW_PLAYLIST_FILE,
-    PREPARED_PLAYLIST_FILE,
-)
+from music_sync.config import config
 
 
 @click.command()
 @click.option(
     "--xml-library-file",
-    default=APPLE_MUSIC_LIBRARY_FILE,
+    default=config.apple_music.library_file,
     type=str,
     show_default=True,
     help="Path to the Apple Music library XML file.",
 )
 @click.option(
     "--playlists-file",
-    default=RAW_PLAYLIST_FILE,
+    default=config.apple_music.raw_playlist_file,
     type=str,
     show_default=True,
     help="Path to save the raw playlist data in JSON format.",
 )
 @click.option(
     "--songs-file",
-    default=SONG_FILE,
+    default=config.apple_music.song_file,
     type=str,
     show_default=True,
     help="Path to save the song data in CSV format.",
 )
 @click.option(
     "--prepared-playlists-file",
-    default=PREPARED_PLAYLIST_FILE,
+    default=config.apple_music.prepared_playlist_file,
     type=str,
     show_default=True,
     help="Path to save the processed playlist data in JSON format.",

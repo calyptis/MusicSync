@@ -73,7 +73,7 @@ def find_best_match(tracks: list, song: Song) -> SongMatch:
 
     Parameters
     ----------
-    tracks : list
+    tracks : list:
         A list of tracks returned from the Spotify search API, where each track
         is represented by a dictionary containing track details.
     song : Song

@@ -9,9 +9,28 @@ description = "Syncing Apple Music Library to Spotify"
 readme = "README.md"
 requires-python = ">=3.10"
 dynamic = ["version"]
+dependencies = [
+    "auto_mix_prep==0.2.0",
+    "click~=8.1.7",
+    "flask~=2.2.5",
+    "loguru~=0.7.3",
+    "mypy",
+    "notebook",
+    "numpy~=1.26.3",
+    "pandas~=2.1.4",
+    "pandas-stubs==2.3.3.260113",
+    "pre-commit",
+    "pydantic~=2.11.2",
+    "pytest",
+    "rapidfuzz~=3.13.0",
+    "requests~=2.31.0",
+    "ruff",
+    "spotipy==2.23.0",
+    "tqdm>=4.67.1",
+    "werkzeug~=2.2.3",
+]
 
 [tool.setuptools.dynamic]
-dependencies = {file = ["requirements.txt"]}
 version = {attr = "music_sync.__version__"}
 
 [tool.ruff]

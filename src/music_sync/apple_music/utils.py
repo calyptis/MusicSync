@@ -3,7 +3,7 @@
 from xml.etree.ElementTree import Element
 
 
-def get_entry(song: Element) -> dict[str, str]:
+def get_entry(song: list[Element]) -> dict[str, str]:
     """
     Parse an XML song tag into a dictionary.
 
@@ -13,7 +13,7 @@ def get_entry(song: Element) -> dict[str, str]:
 
     Parameters
     ----------
-    song : list
+    song : list[Element]:
         A list of XML elements representing a song, where alternating elements represent keys and values.
 
     Returns

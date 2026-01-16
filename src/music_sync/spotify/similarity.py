@@ -5,6 +5,7 @@ from rapidfuzz import fuzz
 
 from music_sync.spotify.utils import clean_string
 from music_sync.classes import Song, Similarity
+from music_sync.config import config
 
 
 def similarity_func(a: str, b: str) -> float:
@@ -59,18 +60,13 @@ def measure_similarity(song_to_match: Song, match: Song) -> Similarity:
     )
     # The three types of similarities
     similarities = np.array([song_similarity, artist_similarity, album_similarity])
-    # Setting the weight of each similarity
-    # (song, artist, album)
-    # Getting the song right is slightly more important
-    w = np.array([0.4, 0.3, 0.3])
-    # In case no album was provided, exclude it from aggregate similarity
-    ww = np.array([0.6, 0.4])
+
     # If no album name => ignore its similarity
-    if song_to_match.album == "":
+    if not song_to_match.album or song_to_match.album == "":
         album_similarity = None
-        total_similarity = sum(similarities[:-1] * ww)
+        total_similarity = sum(similarities[:-1] * config.sync.weights_song_artist)
     else:
-        total_similarity = sum(similarities * w)
+        total_similarity = sum(similarities * config.sync.weights_song_artist_album)
 
     return Similarity(
         total_similarity=total_similarity,
