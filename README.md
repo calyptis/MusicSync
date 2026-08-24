@@ -3,7 +3,7 @@
 ### Synchronize your Apple Music library with Spotify.
 This tool matches songs between platforms with precision and gives you **full control over your data**.
 
-# 🚀 Features
+# Features
 
 - Syncs only playlists
    - To sync your entire library, add it to a single playlist
@@ -21,7 +21,7 @@ This tool matches songs between platforms with precision and gives you **full co
 
 </details>
 
-# 🛠 Installation
+# Installation
 
 ## 1. Register a Spotify Developer App
 
@@ -69,7 +69,7 @@ Create a file `credentials/credentials.json` with the following content:
 replace your client ID and secret with the values obtained from step 4 in Section 1.
 
 
-# 🎵 Syncing Your Library
+# Syncing Your Library
 
 ## Step 1: Export from Apple Music
 
@@ -102,13 +102,13 @@ python -m music_sync.apple_music.cli
 python -m music_sync.spotify.cli --name "Apple Music Playlist Name"
 ```
 
-# ⚠️ Notes
+# Notes
 - Syncing only adds songs to Spotify playlists
 - Songs removed in Apple Music will not be removed from the Spotify playlist.
 - Only playlists are synced
 
-# 🧠 TODO:
+# TODO:
 - [ ] Use cosine similarity of LLM embeddings to better evaluate match
 
-# 🔗 Related projects
+# Related projects
 - https://soundiiz.com
