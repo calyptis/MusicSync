@@ -1,31 +1,36 @@
 """Data models for songs, similarity scores, and song matches."""
-from pydantic import BaseModel
-from typing import Optional, Union, TypedDict
+
+from typing import TypedDict
+
+from pydantic import BaseModel, ConfigDict
 
 
 class Song(BaseModel):
     """Song information."""
 
-    name: Optional[str] = None
-    artist: Optional[str] = None
-    album: Optional[str] = None
-    track_id: Optional[Union[str, int]] = None
+    # Frozen so instances are hashable and can be used in sets/dict keys.
+    model_config = ConfigDict(frozen=True)
 
-    class Config:
-        # Make the instance hashable
-        frozen = True
+    name: str | None = None
+    artist: str | None = None
+    album: str | None = None
+    track_id: str | int | None = None
+
+    def as_search_query(self) -> str:
+        """Render the song as a free-text query for the Spotify search endpoint."""
+        return f"{self.name} {self.artist} {self.album}".strip()
 
     def __repr__(self):
-        return f"{self.name} {self.artist} {self.album}".strip()
+        return self.as_search_query()
 
 
 class Similarity(BaseModel):
     """Song similarity scores."""
 
-    total_similarity: Optional[float] = None
-    song_similarity: Optional[float] = None
-    artist_similarity: Optional[float] = None
-    album_similarity: Optional[float] = None
+    total_similarity: float | None = None
+    song_similarity: float | None = None
+    artist_similarity: float | None = None
+    album_similarity: float | None = None
 
 
 class SongMatch(BaseModel):

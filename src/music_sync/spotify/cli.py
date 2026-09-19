@@ -1,7 +1,8 @@
 """CLI for syncing prepared Apple Music playlists to Spotify."""
 
-import click
 import json
+
+import click
 
 from music_sync.config import config
 from music_sync.spotify.sync import sync_playlist
@@ -17,12 +18,19 @@ from music_sync.spotify.utils import get_spotipy_instance
     help="Name of the playlist to sync.",
 )
 def main(playlist_name: str):
-    playlists = json.load(open(config.apple_music.prepared_playlist_file, "r"))
+    """Sync a single, already parsed Apple Music playlist to Spotify."""
+    with open(config.apple_music.prepared_playlist_file, "r") as f:
+        playlists = json.load(f)
+
+    if playlist_name not in playlists:
+        raise click.BadParameter(
+            f"No parsed playlist named {playlist_name!r}. "
+            f"Available playlists: {', '.join(sorted(playlists))}",
+            param_hint="--name",
+        )
+
     sp_instance = get_spotipy_instance()
-    if playlist_name in playlists:
-        sync_playlist(sp_instance, playlist_name, playlists[playlist_name])
-    else:
-        raise Exception("Specified playlist does not exist. Perhaps there's a typo?")
+    sync_playlist(sp_instance, playlist_name, playlists[playlist_name])
 
 
 if __name__ == "__main__":

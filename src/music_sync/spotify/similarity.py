@@ -8,7 +8,7 @@ from music_sync.classes import Song, Similarity
 from music_sync.config import config
 
 
-def similarity_func(a: str, b: str) -> float:
+def string_similarity(a: str, b: str) -> float:
     """
     Measure the similarity between two strings using rapidfuzz.
 
@@ -47,30 +47,33 @@ def measure_similarity(song_to_match: Song, match: Song) -> Similarity:
         Similarities for (aggregate, song, artist, album)
     """
     # Song similarity
-    song_similarity = similarity_func(
+    song_similarity = string_similarity(
         clean_string(song_to_match.name), clean_string(match.name)
     )
     # Artist similarity
-    artist_similarity = similarity_func(
+    artist_similarity = string_similarity(
         clean_string(song_to_match.artist), clean_string(match.artist)
     )
     # Album similarity
-    album_similarity = similarity_func(
+    album_similarity = string_similarity(
         clean_string(song_to_match.album), clean_string(match.album)
     )
-    # The three types of similarities
-    similarities = np.array([song_similarity, artist_similarity, album_similarity])
-
-    # If no album name => ignore its similarity
-    if not song_to_match.album or song_to_match.album == "":
-        album_similarity = None
-        total_similarity = sum(similarities[:-1] * config.sync.weights_song_artist)
+    # If no album name was provided => exclude it from the aggregate
+    has_album = bool(song_to_match.album)
+    if has_album:
+        total_similarity = np.dot(
+            [song_similarity, artist_similarity, album_similarity],
+            config.sync.weights_song_artist_album,
+        )
     else:
-        total_similarity = sum(similarities * config.sync.weights_song_artist_album)
+        total_similarity = np.dot(
+            [song_similarity, artist_similarity],
+            config.sync.weights_song_artist,
+        )
 
     return Similarity(
-        total_similarity=total_similarity,
+        total_similarity=float(total_similarity),
         song_similarity=song_similarity,
         artist_similarity=artist_similarity,
-        album_similarity=album_similarity,
+        album_similarity=album_similarity if has_album else None,
     )

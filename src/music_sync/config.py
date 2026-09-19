@@ -5,13 +5,13 @@ from typing import ClassVar
 
 import numpy as np
 from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Base directories
 ROOT_DIR = pathlib.Path(__file__).resolve().parent.parent.parent
 DATA_DIR = ROOT_DIR / "data"
 APPLE_MUSIC_DIR = DATA_DIR / "apple_music"
 LOG_DIR = DATA_DIR / "sync_logs"
-CREDENTIALS_DIR = ROOT_DIR / "credentials"
 
 
 class PathsConfig(BaseModel):
@@ -23,8 +23,15 @@ class PathsConfig(BaseModel):
     apple_music_dir: pathlib.Path = APPLE_MUSIC_DIR
 
 
-class SpotifyConfig(BaseModel):
-    """Spotify API configuration."""
+class SpotifyConfig(BaseSettings):
+    """Spotify API configuration, read from the environment or a `.env` file."""
+
+    model_config = SettingsConfigDict(
+        env_file=ROOT_DIR / ".env",
+        env_file_encoding="utf-8",
+        env_prefix="SPOTIFY_",
+        extra="ignore",
+    )
 
     scopes_list: ClassVar[list[str]] = [
         "user-library-modify",
@@ -35,7 +42,11 @@ class SpotifyConfig(BaseModel):
     ]
     scopes: str = " ".join(scopes_list)
 
-    credentials_file: pathlib.Path = CREDENTIALS_DIR / "credentials.json"
+    # Credentials are optional at import time so that `--help` and plain imports
+    # work without a .env; they are validated when an API client is built.
+    client_id: str | None = None
+    client_secret: str | None = None
+    redirect_uri: str = "http://localhost:9000/callback/"
 
 
 class AppleMusicConfig(BaseModel):

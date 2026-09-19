@@ -1,17 +1,39 @@
 """Functions for parsing and preparing Apple Music library and playlists."""
 
 import json
+import pathlib
 
 from loguru import logger
 import pandas as pd
 import xml.etree.ElementTree as ElTr
 
 from music_sync.config import config
-from music_sync.apple_music.utils import get_entry
+from music_sync.apple_music.utils import parse_song_entry
+
+
+def find_or_raise(element: ElTr.Element, path: str, description: str) -> ElTr.Element:
+    """
+    Find a required child element, failing with a readable message if it is absent.
+
+    The Apple Music export is addressed positionally, so a format change shows up
+    as a missing tag. Raising here beats an opaque `AttributeError` on `None`.
+
+    Raises
+    ------
+    ValueError
+        If `path` matches no child of `element`.
+    """
+    found = element.find(path)
+    if found is None:
+        raise ValueError(
+            f"Unexpected Apple Music library format: could not find {description} "
+            f"(<{path}> inside <{element.tag}>)."
+        )
+    return found
 
 
 def parse_apple_music_library(
-    filename: str = config.apple_music.library_file,
+    filename: str | pathlib.Path = config.apple_music.library_file,
 ) -> tuple[pd.DataFrame, dict]:
     """
     Parse Apple Music library, which is exported using File -> Library -> Export Library...
@@ -34,22 +56,22 @@ def parse_apple_music_library(
     tree = ElTr.parse(filename)
     root = tree.getroot()
     # Contains metadata in <key>
-    library = root.find("dict")
+    library = find_or_raise(root, "dict", "the library metadata")
 
     # /// SONGS \\\
     # Song list at next dict attribute
-    song_list = library.find("dict")
+    song_list = find_or_raise(library, "dict", "the song list")
     # Each song has first an ID entry <key> and then its info <dict>
     songs = song_list.findall("dict")
     # Load songs into a dataframe
-    df_songs = pd.DataFrame(list(map(get_entry, songs)))
+    df_songs = pd.DataFrame(list(map(parse_song_entry, songs)))
     # Get correct dtypes
-    tags = {}
+    tags: dict[str, str] = {}
     for s in songs:
         for i in range(0, len(s) - 1, 2):
             e = s[i].text
             t = s[i + 1].tag
-            if e not in tags:
+            if e is not None and e not in tags:
                 tags[e] = t
     # Transform columns to have correct type
     for col in df_songs.columns:
@@ -59,28 +81,40 @@ def parse_apple_music_library(
             df_songs[col] = pd.to_datetime(df_songs[col], yearfirst=True)
 
     # /// PLAYLISTS \\\
-    playlists_data = library.findall("array")[-1].findall("dict")
-    dict_playlist = {}
+    playlist_arrays = library.findall("array")
+    if not playlist_arrays:
+        raise ValueError(
+            "Unexpected Apple Music library format: could not find the playlist array."
+        )
+    playlists_data = playlist_arrays[-1].findall("dict")
+
+    dict_playlist: dict[str, list[int] | None] = {}
     for p in playlists_data:
-        p_name = p.find("string").text
-        tmp_track_list = p.findall("array")
+        name_element = p.find("string")
+        if name_element is None or name_element.text is None:
+            logger.warning("Skipping a playlist that has no name")
+            continue
+
+        track_arrays = p.findall("array")
         track_list = None
-        if tmp_track_list:
-            try:
-                tmp_track_list = tmp_track_list[-1].findall("dict")
-                if tmp_track_list:
-                    track_list = [int(i.find("integer").text) for i in tmp_track_list]
-            except KeyError:
-                pass
-        dict_playlist[p_name] = track_list
+        if track_arrays:
+            track_entries = track_arrays[-1].findall("dict")
+            if track_entries:
+                track_ids = [entry.find("integer") for entry in track_entries]
+                track_list = [
+                    int(track_id.text)
+                    for track_id in track_ids
+                    if track_id is not None and track_id.text is not None
+                ]
+        dict_playlist[name_element.text] = track_list
 
     return df_songs, dict_playlist
 
 
 def save_apple_music_library(
-    xml_library_file: str = config.apple_music.library_file,
-    playlists_file: str = config.apple_music.raw_playlist_file,
-    songs_file: str = config.apple_music.song_file,
+    xml_library_file: str | pathlib.Path = config.apple_music.library_file,
+    playlists_file: str | pathlib.Path = config.apple_music.raw_playlist_file,
+    songs_file: str | pathlib.Path = config.apple_music.song_file,
 ):
     """
     Write Apple Music Library Data to Specified Files
@@ -111,9 +145,10 @@ def save_apple_music_library(
 
 
 def prepare_playlists_for_syncing(
-    songs_file: str = config.apple_music.song_file,
-    raw_playlists_file: str = config.apple_music.raw_playlist_file,
-    parsed_playlists_file: str = config.apple_music.prepared_playlist_file,
+    songs_file: str | pathlib.Path = config.apple_music.song_file,
+    raw_playlists_file: str | pathlib.Path = config.apple_music.raw_playlist_file,
+    parsed_playlists_file: str
+    | pathlib.Path = config.apple_music.prepared_playlist_file,
 ):
     """
     Prepare playlists by parsing raw playlist data and mapping it to metadata from available songs.

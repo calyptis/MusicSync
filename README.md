@@ -46,27 +46,31 @@ cd MusicSync
 
 ### 2.2 Install Dependencies
 
-Using uv (recommended):
-```
-uv pip install -e .
+Requires Python 3.12 or newer and [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv sync
 ```
 
-This installs the package in editable mode with all dependencies.
-
+This creates a virtual environment and installs the package in editable mode
+together with its dependencies and the `dev` group (linting and testing tools).
+Use `uv sync --no-dev` for a runtime-only install.
 
 ### 2.3 Add Your Credentials
 
-Create a file `credentials/credentials.json` with the following content:
+Create a `.env` file in the project root:
 
-```python
-{
-	"client_id": "your-client-id",
-	"client_secret": "your-client-secret",
-	"redirect_uri": "http://localhost:9000/callback/",
-}
+```bash
+cat > .env <<'EOF'
+SPOTIFY_CLIENT_ID=your-client-id
+SPOTIFY_CLIENT_SECRET=your-client-secret
+SPOTIFY_REDIRECT_URI=http://localhost:9000/callback/
+EOF
 ```
 
-replace your client ID and secret with the values obtained from step 4 in Section 1.
+Replace the client ID and secret with the values obtained from step 4 in Section 1.
+`.env` is git-ignored. Any of these may also be supplied as ordinary environment
+variables, which take precedence over the file.
 
 
 # Syncing Your Library
@@ -81,25 +85,37 @@ replace your client ID and secret with the values obtained from step 4 in Sectio
 
 ## Step 2: Sync
 
-### Syncs entire library (all playlists)
-```bash
-python -m music_sync.cli
-```
-- To exclude certain playlists, add them to the EXCLUDE_PLAYLIST_FILE.
-    - List one playlist per line.
+### Sync the entire library (all playlists)
 
-### Syncs a specific playlist
+```bash
+uv run music-sync
+```
+
+- To exclude certain playlists, list them one per line in
+  `data/apple_music/exclude_playlists.txt`.
+
+### Sync a specific playlist
 
 1. Parse the Apple Music library (if not already done):
 
 ```bash
-python -m music_sync.apple_music.cli
+uv run music-sync-parse-library
 ```
 
-2. Sync a playlist by name
+2. Sync a playlist by name:
 
 ```bash
-python -m music_sync.spotify.cli --name "Apple Music Playlist Name"
+uv run music-sync-playlist --name "Apple Music Playlist Name"
+```
+
+Pass `--help` to any of these commands to see the available options.
+
+# Development
+
+```bash
+uv run pytest
+uv run ruff check src tests
+uv run pre-commit install
 ```
 
 # Notes

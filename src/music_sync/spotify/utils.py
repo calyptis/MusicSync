@@ -1,8 +1,6 @@
 """Utility functions for Spotify API access, string cleaning, retries, and query generation."""
 
-import json
 import time
-from typing import Generator
 from requests.exceptions import ReadTimeout
 import re
 
@@ -15,35 +13,25 @@ from music_sync.classes import Song
 from music_sync.config import config
 
 
-def clean_string(x: str) -> str:
+def clean_string(x: str | None) -> str:
     """
-    Strip space and transforms string into lowercase letters
+    Strip space and transform string into lowercase letters.
 
     Parameters
     ----------
-    x : str
-        String to be cleaned
+    x : str | None
+        String to be cleaned. A missing value is treated as an empty string.
 
     Returns
     -------
     Cleaned string
     """
+    if x is None:
+        return ""
     return x.lower().strip()
 
 
-def get_credentials(credentials_path: str = config.spotify.credentials_file) -> dict:
-    """
-    Read in credentials stored in a file.
-
-    Parameters
-    ----------
-    credentials_path
-        Path to the JSON containing Spotify API credentials & configurations
-    """
-    return json.load(open(credentials_path, "rb"))
-
-
-def timeout_wrapper(api_call, n_retries: int = 5, backoff_factor: float = 0.8):
+def retry_on_timeout(api_call, n_retries: int = 5, backoff_factor: float = 0.8):
     """
     Retry an API call multiple times to handle transient timeouts or network errors.
 
@@ -93,9 +81,14 @@ def generate_alternate_queries(song: Song) -> list[Song]:
     attempts: list[Song] :
         Alternative song variations.
     """
-    attempts = []
+    attempts: list[Song] = []
 
-    def add_attempts(s_name, a_name, alb_name):
+    # Song fields are optional; a missing one is an empty string here.
+    name = song.name or ""
+    artist = song.artist or ""
+    album = song.album or ""
+
+    def add_attempts(s_name: str, a_name: str, alb_name: str) -> None:
         """Helper to add standard + no-album versions of a query."""
         attempts.append(
             Song(name=s_name.strip(), artist=a_name.strip(), album=alb_name.strip())
@@ -103,33 +96,33 @@ def generate_alternate_queries(song: Song) -> list[Song]:
         attempts.append(Song(name=s_name.strip(), artist=a_name.strip(), album=""))
 
     # Sometimes there is no match if song includes "feat." or "ft."
-    if "feat." in song.name.lower() or "ft." in song.name.lower():
+    if "feat." in name.lower() or "ft." in name.lower():
         cleaned_name = re.sub(
-            r"\s*\(?\b(?:feat\.|ft\.)\b.*", "", song.name, flags=re.IGNORECASE
+            r"\s*\(?\b(?:feat\.|ft\.)\b.*", "", name, flags=re.IGNORECASE
         ).strip()
-        no_feat_name = song.name.replace("feat. ", " ").replace("ft. ", " ")
-        song_name_clean_first_collab = re.split(
-            r"(\s?\(?feat\.)|(\s?\(?ft\.)", song.name
-        )[0].strip()
-        add_attempts(song_name_clean_first_collab, song.artist, song.album)
-        add_attempts(no_feat_name, song.artist, song.album)
-        add_attempts(cleaned_name, song.artist, song.album)
+        no_feat_name = name.replace("feat. ", " ").replace("ft. ", " ")
+        song_name_clean_first_collab = re.split(r"(\s?\(?feat\.)|(\s?\(?ft\.)", name)[
+            0
+        ].strip()
+        add_attempts(song_name_clean_first_collab, artist, album)
+        add_attempts(no_feat_name, artist, album)
+        add_attempts(cleaned_name, artist, album)
 
     # Sometimes there is no match if song includes "remastered"
-    if "remastered" in song.name.lower():
+    if "remastered" in name.lower():
         cleaned_name = re.sub(
-            r"\s*\(?remastered[^\)]*\)?", "", song.name, flags=re.IGNORECASE
+            r"\s*\(?remastered[^\)]*\)?", "", name, flags=re.IGNORECASE
         ).strip()
-        add_attempts(cleaned_name, song.artist, song.album)
+        add_attempts(cleaned_name, artist, album)
 
     # Sometimes there is no match if artist is collaboration and includes "&", like Brian Eno & John Cale
-    if "&" in song.artist:
+    if "&" in artist:
         # Try only the first artist
-        main_artist = song.artist.split("&")[0]
-        add_attempts(song.name, main_artist, song.album)
+        main_artist = artist.split("&")[0]
+        add_attempts(name, main_artist, album)
         # Try replacing '&' with a comma
-        artist_with_comma = song.artist.replace(" & ", ", ")
-        add_attempts(song.name, artist_with_comma, song.album)
+        artist_with_comma = artist.replace(" & ", ", ")
+        add_attempts(name, artist_with_comma, album)
 
     return attempts
 
@@ -138,17 +131,30 @@ def get_spotipy_instance() -> spotipy.Spotify:
     """
     Initiate the spotipy instance to allow API calls.
 
+    Credentials are read from the environment or a `.env` file as
+    `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` and `SPOTIFY_REDIRECT_URI`.
+
     Returns
     -------
-    spotipy_instance
+    spotipy.Spotify
+        An authenticated client.
+
+    Raises
+    ------
+    RuntimeError
+        If no client ID or secret has been configured.
     """
-    spotify_credentials = get_credentials()
-    spotipy_instance = spotipy.Spotify(
+    if not config.spotify.client_id or not config.spotify.client_secret:
+        raise RuntimeError(
+            "No Spotify credentials found. Create a .env file in the project root "
+            "with SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET (see README)."
+        )
+
+    return spotipy.Spotify(
         auth_manager=SpotifyOAuth(
-            client_id=spotify_credentials["client_id"],
-            client_secret=spotify_credentials["client_secret"],
-            redirect_uri=spotify_credentials["redirect_uri"],
+            client_id=config.spotify.client_id,
+            client_secret=config.spotify.client_secret,
+            redirect_uri=config.spotify.redirect_uri,
             scope=config.spotify.scopes,
         )
     )
-    return spotipy_instance
