@@ -7,35 +7,58 @@ name = "music_sync"
 authors = [{"name" = "Lucas Chizzali"}]
 description = "Syncing Apple Music Library to Spotify"
 readme = "README.md"
-requires-python = ">=3.10"
+# itertools.batched (music_sync.spotify.sync) requires 3.12
+requires-python = ">=3.12"
 dynamic = ["version"]
 dependencies = [
-    "auto_mix_prep==0.2.0",
     "click~=8.1.7",
-    "flask~=2.2.5",
     "loguru~=0.7.3",
-    "mypy",
-    "notebook",
     "numpy~=1.26.3",
     "pandas~=2.1.4",
-    "pandas-stubs==2.3.3.260113",
-    "pre-commit",
     "pydantic~=2.11.2",
-    "pytest",
+    "pydantic-settings~=2.7",
     "rapidfuzz~=3.13.0",
     "requests~=2.31.0",
-    "ruff",
     "spotipy==2.23.0",
     "tqdm>=4.67.1",
-    "werkzeug~=2.2.3",
+]
+
+[project.scripts]
+music-sync = "music_sync.cli:main"
+music-sync-parse-library = "music_sync.apple_music.cli:main"
+music-sync-playlist = "music_sync.spotify.cli:main"
+
+[dependency-groups]
+dev = [
+    "mypy",
+    "notebook",
+    "pandas-stubs==2.3.3.260113",
+    "pre-commit",
+    "pytest",
+    "ruff",
+    "types-requests",
+    "types-tqdm",
 ]
 
 [tool.setuptools.dynamic]
 version = {attr = "music_sync.__version__"}
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+files = ["src", "tests"]
+python_version = "3.12"
+warn_unused_ignores = true
+
+# spotipy ships neither stubs nor a py.typed marker.
+[[tool.mypy.overrides]]
+module = ["spotipy.*"]
+ignore_missing_imports = true
+
 [tool.ruff]
 extend-include = ["*.ipynb"]
-target-version = "py310"
+target-version = "py312"
 line-length = 88
 
 [tool.ruff.lint]

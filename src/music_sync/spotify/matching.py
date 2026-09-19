@@ -4,14 +4,13 @@ import re
 import requests
 
 import spotipy
-import numpy as np
 
 from music_sync.classes import Song, SongMatch, Similarity
 from music_sync.spotify.similarity import measure_similarity
-from music_sync.spotify.utils import generate_alternate_queries, timeout_wrapper
+from music_sync.spotify.utils import generate_alternate_queries, retry_on_timeout
 
 
-def get_best_match(sp: spotipy.Spotify, song: Song) -> SongMatch:
+def search_best_match(sp: spotipy.Spotify, song: Song) -> SongMatch:
     """
     Return the best Spotify song match for a given Apple Music song, if available.
 
@@ -40,21 +39,21 @@ def get_best_match(sp: spotipy.Spotify, song: Song) -> SongMatch:
 
     attempts_best_matches = []
     for attempt in attempts:
-        query = attempt.__repr__()
+        query = attempt.as_search_query()
         query = re.sub(r"\s+", " ", query).strip()
         try:
-            tracks = timeout_wrapper(lambda: sp.search(query, limit=15).get("tracks"))
+            tracks = retry_on_timeout(lambda: sp.search(query, limit=15).get("tracks"))
         except (spotipy.exceptions.SpotifyException, requests.exceptions.ReadTimeout):
             tracks = None
         if tracks is not None and len(tracks.get("items")) > 0:
             items = tracks.get("items")
-            attempts_best_matches += [find_best_match(items, attempt)]
+            attempts_best_matches += [select_best_match(items, attempt)]
 
     if attempts_best_matches:
         # Find best match across all the attempts
-        scores = [i.similarity.total_similarity for i in attempts_best_matches]
-        optimal = np.argmax(scores)
-        best_match = attempts_best_matches[optimal]
+        best_match = max(
+            attempts_best_matches, key=lambda m: m.similarity.total_similarity or 0.0
+        )
         # Overwrite apple info => original (not modified song info)
         best_match.apple_info = song
         return best_match
@@ -63,7 +62,7 @@ def get_best_match(sp: spotipy.Spotify, song: Song) -> SongMatch:
         return SongMatch(apple_info=song, spotify_info=Song(), similarity=Similarity())
 
 
-def find_best_match(tracks: list, song: Song) -> SongMatch:
+def select_best_match(tracks: list, song: Song) -> SongMatch:
     """
     Identify the best matching track from a list of tracks based on string similarity.
 
@@ -85,18 +84,22 @@ def find_best_match(tracks: list, song: Song) -> SongMatch:
         A SongMatch object containing the original Apple Music song,
         the best-matching Spotify track, and the similarity metrics.
     """
-    matched_items = evaluate_matches(tracks, song)
-    best_match_idx = np.argmax([i.total_similarity for i in matched_items])
-    best_match_item = tracks[best_match_idx]
+    scored_tracks = score_tracks(tracks, song)
+    if not scored_tracks:
+        return SongMatch(apple_info=song, spotify_info=Song(), similarity=Similarity())
+
+    best_match_item, match_similarity = max(
+        scored_tracks, key=lambda pair: pair[1].total_similarity or 0.0
+    )
 
     spotify_info = Song(
         name=best_match_item.get("name"),
-        artist=" ".join([i.get("name") for i in best_match_item.get("artists")]),
-        album=best_match_item.get("album").get("name"),
+        artist=" ".join(
+            i.get("name", "") for i in best_match_item.get("artists") or []
+        ),
+        album=(best_match_item.get("album") or {}).get("name"),
         track_id=best_match_item.get("id"),
     )
-
-    match_similarity = matched_items[best_match_idx]
 
     return SongMatch(
         apple_info=song,
@@ -105,10 +108,9 @@ def find_best_match(tracks: list, song: Song) -> SongMatch:
     )
 
 
-def evaluate_matches(tracks: list, song: Song) -> list[Similarity]:
+def score_tracks(tracks: list, song: Song) -> list[tuple[dict, Similarity]]:
     """
-    Calculate similarities between the original query and all returned matches.
-    These similarities are at a later stage used to identify the best match.
+    Score every track returned by the API against the original query.
 
     Parameters
     ----------
@@ -119,26 +121,23 @@ def evaluate_matches(tracks: list, song: Song) -> list[Similarity]:
 
     Returns
     -------
-    matched_items: list[Similarity] :
-        List of tuples containing similarity metrics as returned by query_similarity
+    list[tuple[dict, Similarity]] :
+        Each track paired with its similarity metrics. Tracks are paired with
+        their own score so that callers cannot mix up indices.
     """
-    matched_items = []
+    scored_tracks = []
     for item in tracks:
-        if item is not None:
-            song_name = str(item.get("name", ""))
-            artist_name = " ".join(
-                [str(i.get("name", "")) for i in item.get("artists")]
-            ).strip()
-            album_name = str(item.get("album").get("name", ""))
+        if item is None:
+            continue
+        match = Song(
+            name=str(item.get("name", "")),
+            artist=" ".join(
+                str(i.get("name", "")) for i in item.get("artists") or []
+            ).strip(),
+            album=str((item.get("album") or {}).get("name", "")),
+        )
+        scored_tracks.append(
+            (item, measure_similarity(song_to_match=song, match=match))
+        )
 
-            matched_item = measure_similarity(
-                song_to_match=song,
-                match=Song(
-                    name=song_name,
-                    artist=artist_name,
-                    album=album_name,
-                ),
-            )
-            matched_items.append(matched_item)
-
-    return matched_items
+    return scored_tracks

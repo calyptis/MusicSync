@@ -1,4 +1,5 @@
 """CLI for processing Apple Music library and playlists."""
+
 import click
 
 from music_sync.apple_music.parse_library import (
@@ -44,22 +45,10 @@ def main(
     prepared_playlists_file: str,
 ):
     """
-    Main function for processing an Apple Music library and preparing playlists for syncing.
+    Parse an Apple Music library export and prepare its playlists for syncing.
 
-    This function performs two operations:
-    1. Parse and save the Apple Music library into separate files for songs and playlists.
-    2. Prepare playlists by filtering and transforming raw playlist data based on song metadata.
-
-    Parameters
-    ----------
-    xml_library_file : str
-        Path to the Apple Music library XML file. Defaults to `APPLE_MUSIC_LIBRARY_FILE`.
-    playlists_file : str
-        Path to save the raw playlist data in JSON format. Defaults to `RAW_PLAYLIST_FILE`.
-    songs_file : str
-        Path to save the song data in CSV format. Defaults to `SONG_FILE`.
-    prepared_playlists_file : str
-        Path to save the processed playlist data in JSON format. Defaults to `PREPARED_PLAYLIST_FILE`.
+    Writes the library to a songs CSV and a raw playlists JSON, then resolves
+    each playlist's track IDs into song metadata.
     """
 
     save_apple_music_library(xml_library_file, playlists_file, songs_file)
